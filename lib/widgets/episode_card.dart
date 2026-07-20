@@ -4,6 +4,7 @@ import '../models.dart';
 class EpisodeCard extends StatelessWidget {
   final Series series;
   final Episode episode;
+  final DateTime? today;
   final VoidCallback onSeriesTap;
   final VoidCallback onEpisodeTap;
   final VoidCallback onMarkWatched;
@@ -12,10 +13,45 @@ class EpisodeCard extends StatelessWidget {
     super.key,
     required this.series,
     required this.episode,
+    this.today,
     required this.onSeriesTap,
     required this.onEpisodeTap,
     required this.onMarkWatched,
   });
+
+  Widget _buildTrailingAction(BuildContext context) {
+    if (today != null) {
+      final currentDate = today ?? DateTime.now();
+      final normalizedToday = DateTime(
+        currentDate.year,
+        currentDate.month,
+        currentDate.day,
+      );
+
+      final airDate = episode.airDate;
+      final episodeDay = DateTime(airDate.year, airDate.month, airDate.day);
+      final daysUntil = episodeDay.difference(normalizedToday).inDays;
+
+      if (daysUntil > 0) {
+        final labelText = daysUntil == 1 ? 'In 1 day' : 'In $daysUntil days';
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Text(
+            labelText,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        );
+      }
+    }
+
+    return IconButton(
+      icon: const Icon(Icons.check_circle_outline),
+      onPressed: onMarkWatched,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -88,15 +124,7 @@ class EpisodeCard extends StatelessWidget {
                   ],
                 ),
               ),
-              IconButton(
-                icon: Icon(
-                  episode.watched
-                      ? Icons.check_circle
-                      : Icons.check_circle_outline,
-                  color: episode.watched ? Colors.green : null,
-                ),
-                onPressed: onMarkWatched,
-              ),
+              _buildTrailingAction(context),
             ],
           ),
         ),

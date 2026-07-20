@@ -161,6 +161,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     MapEntry<Series, Episode> entry,
     bool showDayChip,
     List<MapEntry<Series, Episode>> items,
+    DateTime today,
   ) {
     final episode = entry.value;
     return Column(
@@ -192,6 +193,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         EpisodeCard(
           series: entry.key,
           episode: episode,
+          today: today,
           onSeriesTap: () async {
             await Navigator.push(
               context,
@@ -221,6 +223,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     return Scaffold(
       appBar: AppBar(title: const Text('Calendar')),
       body: CustomScrollView(
@@ -247,7 +251,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               }
               return Opacity(
                 opacity: 0.7,
-                child: _buildItem(entry, showChip, _pastItems),
+                child: _buildItem(entry, showChip, _pastItems, today),
               );
             }, childCount: _pastItems.length + (_loadingPast ? 1 : 0)),
           ),
@@ -277,7 +281,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 showChip =
                     date.day != prevDate.day || date.month != prevDate.month;
               }
-              return _buildItem(entry, showChip, _futureItems);
+              return _buildItem(entry, showChip, _futureItems, today);
             }, childCount: _futureItems.length + (_loadingFuture ? 1 : 0)),
           ),
         ],

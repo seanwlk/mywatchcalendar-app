@@ -1,0 +1,32 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Flutter: Clean & Get",
+      "type": "shell",
+      "command": "flutter clean && flutter pub get",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Flutter: Build apk",
+      "type": "shell",
+      "command": "flutter build apk",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Flutter: Run",
+      "type": "shell",
+      "command": "flutter run",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    }
+  ]
+}

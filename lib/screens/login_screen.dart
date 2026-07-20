@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 class LoginScreen extends StatefulWidget {
   final Future<void> Function(String username, String password, String siteUrl)
@@ -24,9 +25,11 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _submit() async {
+    final endpoint = kIsWeb ? Uri.base.origin : _endpointController.text.trim();
+
     if (_userController.text.trim().isEmpty ||
         _passController.text.isEmpty ||
-        _endpointController.text.trim().isEmpty) {
+        endpoint.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill out all fields.')),
       );
@@ -37,7 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
     await widget.onLogin(
       _userController.text.trim(),
       _passController.text,
-      _endpointController.text.trim(),
+      endpoint,
     );
     if (mounted) {
       setState(() => _loading = false);
@@ -46,7 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bgGradient = LinearGradient(
+    final bgGradient = const LinearGradient(
       colors: [Colors.black, Color(0xFF121212)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
@@ -87,24 +90,28 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                               const SizedBox(height: 24),
-                              TextField(
-                                controller: _endpointController,
-                                decoration: InputDecoration(
-                                  labelText: 'Server URL',
-                                  prefixIcon: const Icon(Icons.cloud_outlined),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                              if (!kIsWeb) ...[
+                                TextField(
+                                  controller: _endpointController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Server URL',
+                                    prefixIcon: const Icon(
+                                      Icons.cloud_outlined,
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    filled: true,
+                                    fillColor: Theme.of(
+                                      context,
+                                    ).colorScheme.surface,
                                   ),
-                                  filled: true,
-                                  fillColor: Theme.of(
-                                    context,
-                                  ).colorScheme.surface,
+                                  keyboardType: TextInputType.url,
+                                  autofillHints: const [AutofillHints.url],
+                                  textInputAction: TextInputAction.next,
                                 ),
-                                keyboardType: TextInputType.url,
-                                autofillHints: const [AutofillHints.url],
-                                textInputAction: TextInputAction.next,
-                              ),
-                              const SizedBox(height: 16),
+                                const SizedBox(height: 16),
+                              ],
                               TextField(
                                 controller: _userController,
                                 decoration: InputDecoration(

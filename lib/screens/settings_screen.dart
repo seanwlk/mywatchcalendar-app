@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
 import '../services/settings_service.dart';
@@ -86,26 +87,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: const EdgeInsets.all(16),
         child: ListView(
           children: [
-            TextField(
-              controller: _endpointController,
-              decoration: const InputDecoration(
-                labelText: 'API Endpoint URL',
-                border: OutlineInputBorder(),
+            if (!kIsWeb) ...[
+              TextField(
+                controller: _endpointController,
+                decoration: const InputDecoration(
+                  labelText: 'API Endpoint URL',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.url,
               ),
-              keyboardType: TextInputType.url,
-            ),
-            const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: _savingEndpoint ? null : _saveEndpoint,
-              child: _savingEndpoint
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Save endpoint'),
-            ),
-            const SizedBox(height: 24),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: _savingEndpoint ? null : _saveEndpoint,
+                child: _savingEndpoint
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Save endpoint'),
+              ),
+              const SizedBox(height: 24),
+            ],
             const Text(
               'Theme',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),

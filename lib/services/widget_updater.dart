@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -82,7 +83,7 @@ Future<void> _performRefresh() async {
 
 class WidgetUpdater {
   static Future<void> initialize({required int intervalMinutes}) async {
-    if (!Platform.isAndroid) return;
+    if (kIsWeb || !Platform.isAndroid) return;
 
     await HomeWidget.registerInteractivityCallback(widgetBackgroundCallback);
 
@@ -100,7 +101,7 @@ class WidgetUpdater {
   }
 
   static Future<void> triggerNow() async {
-    if (!Platform.isAndroid) return;
+    if (kIsWeb || !Platform.isAndroid) return;
     await _performRefresh();
   }
 }

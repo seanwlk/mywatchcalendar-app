@@ -235,11 +235,25 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+    final currentTheme = _buildTheme(context, _themeChoice);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'MyWatchCalendar',
-      theme: _buildTheme(context, _themeChoice),
+      theme: currentTheme,
       scaffoldMessengerKey: _scaffoldMessengerKey,
+      builder: (context, child) {
+        final screenWidth = MediaQuery.sizeOf(context).width;
+        final responsiveMaxWidth = (screenWidth * 0.45).clamp(600.0, 1200.0);
+        return Container(
+          color: currentTheme.scaffoldBackgroundColor,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: responsiveMaxWidth),
+              child: ClipRect(child: child ?? const SizedBox.shrink()),
+            ),
+          ),
+        );
+      },
       home: _initialized
           ? (_signedIn
                 ? HomeScreen(

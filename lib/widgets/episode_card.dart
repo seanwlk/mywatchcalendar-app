@@ -48,7 +48,10 @@ class EpisodeCard extends StatelessWidget {
     }
 
     return IconButton(
-      icon: const Icon(Icons.check_circle_outline),
+      icon: Icon(
+        episode.watched ? Icons.check_circle : Icons.check_circle_outline,
+        color: episode.watched ? Colors.green : null,
+      ),
       onPressed: onMarkWatched,
     );
   }

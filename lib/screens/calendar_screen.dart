@@ -21,6 +21,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   bool _loadingPast = false;
   bool _hasMoreFuture = true;
   bool _hasMorePast = true;
+  bool _failed = false;
   int _futurePage = 1;
   int _pastPage = 1;
 
@@ -31,8 +32,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _loadFuture();
-    _loadPast();
+    _load(past: false);
+    _load(past: true);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   void _onScroll() {
@@ -40,60 +47,73 @@ class _CalendarScreenState extends State<CalendarScreen> {
         _hasMoreFuture &&
         _scrollController.position.pixels >=
             _scrollController.position.maxScrollExtent - 120) {
-      _loadFuture();
+      _load(past: false);
     }
     if (!_loadingPast &&
         _hasMorePast &&
         _scrollController.position.pixels <=
             _scrollController.position.minScrollExtent + 120) {
-      _loadPast();
+      _load(past: true);
     }
   }
 
-  Future<void> _loadFuture() async {
-    if (_loadingFuture) return;
-    setState(() => _loadingFuture = true);
-    try {
-      final items = await ApiClient.instance.fetchCalendarEpisodes(
-        page: _futurePage,
-        pageSize: _pageSize,
-        direction: 'future',
-      );
-      if (!mounted) return;
-      setState(() {
-        if (items.isNotEmpty) {
-          _futureItems.addAll(items);
+  Future<void> _load({required bool past}) async {
+    if (past ? _loadingPast : _loadingFuture) return;
+    setState(() {
+      if (past) {
+        _loadingPast = true;
+      } else {
+        _loadingFuture = true;
+      }
+    });
+    final items = await ApiClient.instance.fetchCalendarEpisodes(
+      page: past ? _pastPage : _futurePage,
+      pageSize: _pageSize,
+      direction: past ? 'past' : 'future',
+    );
+    if (!mounted) return;
+    setState(() {
+      if (items == null) {
+        _failed = _futureItems.isEmpty && _pastItems.isEmpty;
+        if (past) {
+          _hasMorePast = false;
+          _loadingPast = false;
+        } else {
+          _hasMoreFuture = false;
+          _loadingFuture = false;
+        }
+        return;
+      }
+      final target = past ? _pastItems : _futureItems;
+      if (items.isNotEmpty) {
+        target.addAll(items);
+        if (past) {
+          _pastPage++;
+        } else {
           _futurePage++;
         }
-        _hasMoreFuture = items.length == _pageSize;
-        _loadingFuture = false;
-      });
-    } catch (e) {
-      if (mounted) setState(() => _loadingFuture = false);
-    }
-  }
-
-  Future<void> _loadPast() async {
-    if (_loadingPast) return;
-    setState(() => _loadingPast = true);
-    try {
-      final items = await ApiClient.instance.fetchCalendarEpisodes(
-        page: _pastPage,
-        pageSize: _pageSize,
-        direction: 'past',
-      );
-      if (!mounted) return;
-      setState(() {
-        if (items.isNotEmpty) {
-          _pastItems.addAll(items);
-          _pastPage++;
-        }
+      }
+      if (past) {
         _hasMorePast = items.length == _pageSize;
         _loadingPast = false;
-      });
-    } catch (e) {
-      if (mounted) setState(() => _loadingPast = false);
-    }
+      } else {
+        _hasMoreFuture = items.length == _pageSize;
+        _loadingFuture = false;
+      }
+    });
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _futureItems.clear();
+      _pastItems.clear();
+      _futurePage = 1;
+      _pastPage = 1;
+      _hasMoreFuture = true;
+      _hasMorePast = true;
+      _failed = false;
+    });
+    await Future.wait([_load(past: false), _load(past: true)]);
   }
 
   Future<void> _refreshEpisode(
@@ -225,67 +245,120 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    return Scaffold(
-      appBar: AppBar(title: const Text('Calendar')),
-      body: CustomScrollView(
-        controller: _scrollController,
-        center: _centerKey,
-        slivers: [
-          SliverList(
-            delegate: SliverChildBuilderDelegate((context, idx) {
-              if (idx >= _pastItems.length) {
-                return const Padding(
-                  padding: EdgeInsets.all(20),
-                  child: Center(child: LinearProgressIndicator()),
-                );
-              }
-              final entry = _pastItems[idx];
-              final date = entry.value.airDate;
-              bool showChip = false;
-              if (idx == _pastItems.length - 1) {
-                showChip = true;
-              } else {
-                final prevDate = _pastItems[idx + 1].value.airDate;
-                showChip =
-                    date.day != prevDate.day || date.month != prevDate.month;
-              }
-              return Opacity(
-                opacity: 0.7,
-                child: _buildItem(entry, showChip, _pastItems, today),
-              );
-            }, childCount: _pastItems.length + (_loadingPast ? 1 : 0)),
-          ),
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 16.0),
-              child: Divider(thickness: 2, height: 1),
-            ),
-          ),
-          SliverList(
-            key: _centerKey,
-            delegate: SliverChildBuilderDelegate((context, idx) {
-              if (idx >= _futureItems.length) {
-                return const Padding(
-                  padding: EdgeInsets.all(20),
-                  child: Center(child: CircularProgressIndicator()),
-                );
-              }
-              final entry = _futureItems[idx];
-              final date = entry.value.airDate;
+    final bool isEmpty =
+        !_loadingFuture &&
+        !_loadingPast &&
+        _futureItems.isEmpty &&
+        _pastItems.isEmpty;
 
-              bool showChip = false;
-              if (idx == 0) {
-                showChip = true;
-              } else {
-                final prevDate = _futureItems[idx - 1].value.airDate;
-                showChip =
-                    date.day != prevDate.day || date.month != prevDate.month;
-              }
-              return _buildItem(entry, showChip, _futureItems, today);
-            }, childCount: _futureItems.length + (_loadingFuture ? 1 : 0)),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Calendar'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: (_loadingFuture || _loadingPast) ? null : _refresh,
+            tooltip: 'Refresh',
           ),
         ],
       ),
+      body: isEmpty
+          ? RefreshIndicator(
+              onRefresh: _refresh,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(height: MediaQuery.sizeOf(context).height * 0.25),
+                  Center(
+                    child: Column(
+                      children: [
+                        Icon(
+                          _failed ? Icons.cloud_off : Icons.event_available,
+                          size: 48,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          _failed
+                              ? "Couldn't load the calendar"
+                              : 'No episodes on your calendar yet',
+                        ),
+                        const SizedBox(height: 12),
+                        if (_failed)
+                          FilledButton.icon(
+                            onPressed: _refresh,
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Retry'),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : CustomScrollView(
+              controller: _scrollController,
+              center: _centerKey,
+              slivers: [
+                SliverOpacity(
+                  opacity: 0.7,
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate((context, idx) {
+                      if (idx >= _pastItems.length) {
+                        return const Padding(
+                          padding: EdgeInsets.all(20),
+                          child: Center(child: LinearProgressIndicator()),
+                        );
+                      }
+                      final entry = _pastItems[idx];
+                      final date = entry.value.airDate;
+                      bool showChip = false;
+                      if (idx == _pastItems.length - 1) {
+                        showChip = true;
+                      } else {
+                        final prevDate = _pastItems[idx + 1].value.airDate;
+                        showChip =
+                            date.day != prevDate.day ||
+                            date.month != prevDate.month;
+                      }
+                      return _buildItem(entry, showChip, _pastItems, today);
+                    }, childCount: _pastItems.length + (_loadingPast ? 1 : 0)),
+                  ),
+                ),
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16.0),
+                    child: Divider(thickness: 2, height: 1),
+                  ),
+                ),
+                SliverList(
+                  key: _centerKey,
+                  delegate: SliverChildBuilderDelegate(
+                    (context, idx) {
+                      if (idx >= _futureItems.length) {
+                        return const Padding(
+                          padding: EdgeInsets.all(20),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      final entry = _futureItems[idx];
+                      final date = entry.value.airDate;
+
+                      bool showChip = false;
+                      if (idx == 0) {
+                        showChip = true;
+                      } else {
+                        final prevDate = _futureItems[idx - 1].value.airDate;
+                        showChip =
+                            date.day != prevDate.day ||
+                            date.month != prevDate.month;
+                      }
+                      return _buildItem(entry, showChip, _futureItems, today);
+                    },
+                    childCount: _futureItems.length + (_loadingFuture ? 1 : 0),
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }

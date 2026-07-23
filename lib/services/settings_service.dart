@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum AppThemeChoice { amoledBlue, amoledRed, whiteBlue, whiteRed, materialYou }
@@ -11,7 +12,8 @@ class SettingsService {
   static final SettingsService instance = SettingsService._internal();
 
   SharedPreferences? _prefs;
-  AppThemeChoice themeChoice = AppThemeChoice.amoledBlue;
+  final ValueNotifier<AppThemeChoice> themeChoice =
+      ValueNotifier<AppThemeChoice>(AppThemeChoice.amoledBlue);
   String? siteUrlOverride;
   bool widgetEnabled = false;
   int widgetIntervalMinutes = 60; // default 1 hour
@@ -21,7 +23,7 @@ class SettingsService {
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
     final raw = _prefs?.getString(_keyThemeChoice);
-    themeChoice = AppThemeChoice.values.firstWhere(
+    themeChoice.value = AppThemeChoice.values.firstWhere(
       (choice) => choice.name == raw,
       orElse: () => AppThemeChoice.amoledBlue,
     );
@@ -31,7 +33,7 @@ class SettingsService {
   }
 
   Future<bool> updateTheme(AppThemeChoice choice) async {
-    themeChoice = choice;
+    themeChoice.value = choice;
     return _prefs?.setString(_keyThemeChoice, choice.name) ??
         Future.value(false);
   }

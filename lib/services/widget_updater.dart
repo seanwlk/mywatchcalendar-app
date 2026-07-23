@@ -6,6 +6,7 @@ import 'package:workmanager/workmanager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_client.dart';
 import 'auth_service.dart';
+import '../models.dart';
 
 const String _taskName = 'widget_refresh_task';
 
@@ -27,6 +28,31 @@ void callbackDispatcher() {
   });
 }
 
+Future<void> _write(List<MapEntry<Series, Episode>> items) async {
+  final payload = jsonEncode(
+    items
+        .map(
+          (e) => {
+            'series_id': e.key.id,
+            'series_title': e.key.title,
+            'episode_id': e.value.id,
+            'episode_title': e.value.title,
+            'air_date': e.value.airDate.toIso8601String(),
+            'poster_url': e.key.posterUrl,
+            'season_number': e.value.season,
+            'episode_number': e.value.number,
+            'episodes_left': e.value.episodesLeft,
+          },
+        )
+        .toList(),
+  );
+
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString('widget_towatch', payload);
+  await HomeWidget.saveWidgetData<String>('widget_towatch_data', payload);
+  await HomeWidget.updateWidget(name: 'MyWatchWidgetProvider');
+}
+
 Future<void> _performRefresh() async {
   final installedWidgets = await HomeWidget.getInstalledWidgets();
   if (installedWidgets.isEmpty) {
@@ -34,34 +60,14 @@ Future<void> _performRefresh() async {
     return;
   }
   try {
-    final prefs = await SharedPreferences.getInstance();
-
-    final toWatch = await ApiClient.instance.fetchUnwatchedEpisodes(
+    final items = await ApiClient.instance.fetchUnwatchedEpisodes(
       page: 1,
       pageSize: 30,
     );
-
-    final toWatchJson = jsonEncode(
-      toWatch
-          .map(
-            (e) => {
-              'series_id': e.key.id,
-              'series_title': e.key.title,
-              'episode_id': e.value.id,
-              'episode_title': e.value.title,
-              'air_date': e.value.airDate.toIso8601String(),
-              'poster_url': e.key.posterUrl,
-              'season_number': e.value.season,
-              'episode_number': e.value.number,
-              'episodes_left': e.value.episodesLeft,
-            },
-          )
-          .toList(),
-    );
-
-    await prefs.setString('widget_towatch', toWatchJson);
-    await HomeWidget.saveWidgetData<String>('widget_towatch_data', toWatchJson);
-    await HomeWidget.updateWidget(name: 'MyWatchWidgetProvider');
+    if (items == null) {
+      throw Exception('Could not reach the server');
+    }
+    await _write(items);
   } catch (e) {
     final errorJson = jsonEncode([
       {
@@ -73,6 +79,7 @@ Future<void> _performRefresh() async {
         'poster_url': '',
         'season_number': 0,
         'episode_number': 0,
+        'episodes_left': 0,
       },
     ]);
 
@@ -82,7 +89,10 @@ Future<void> _performRefresh() async {
 }
 
 class WidgetUpdater {
-  static Future<void> initialize({required int intervalMinutes}) async {
+  static Future<void> initialize({
+    required int intervalMinutes,
+    bool force = false,
+  }) async {
     if (kIsWeb || !Platform.isAndroid) return;
 
     await HomeWidget.registerInteractivityCallback(widgetBackgroundCallback);
@@ -96,12 +106,19 @@ class WidgetUpdater {
       _taskName,
       _taskName,
       frequency: Duration(minutes: mins),
-      existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
+      existingWorkPolicy: force
+          ? ExistingPeriodicWorkPolicy.replace
+          : ExistingPeriodicWorkPolicy.keep,
     );
   }
 
-  static Future<void> triggerNow() async {
+  /// Publish already-fetched data — avoids a duplicate network round trip.
+  static Future<void> publish(List<MapEntry<Series, Episode>> items) async {
     if (kIsWeb || !Platform.isAndroid) return;
-    await _performRefresh();
+    try {
+      final installedWidgets = await HomeWidget.getInstalledWidgets();
+      if (installedWidgets.isEmpty) return;
+      await _write(items);
+    } catch (_) {}
   }
 }

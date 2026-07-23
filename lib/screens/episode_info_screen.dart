@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../models.dart';
 import '../services/api_client.dart';
@@ -56,10 +57,11 @@ class _EpisodeInfoScreenState extends State<EpisodeInfoScreen> {
             left: 0,
             right: 0,
             height: 300,
-            child: Image.network(
-              widget.episode.imageUrl,
+            child: CachedNetworkImage(
+              imageUrl: widget.episode.imageUrl,
               fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => const Icon(Icons.broken_image),
+              memCacheWidth: 1080,
+              errorWidget: (_, _, _) => const Icon(Icons.broken_image),
             ),
           ),
           CustomScrollView(
@@ -152,7 +154,7 @@ class _EpisodeInfoScreenState extends State<EpisodeInfoScreen> {
             ],
           ),
           Positioned(
-            top: MediaQuery.of(context).padding.top + 8,
+            top: MediaQuery.paddingOf(context).top + 8,
             left: 8,
             child: IconButton(
               icon: const Icon(Icons.arrow_back, color: Colors.white),

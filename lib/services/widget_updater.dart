@@ -13,19 +13,28 @@ const String _taskName = 'widget_refresh_task';
 @pragma('vm:entry-point')
 Future<void> widgetBackgroundCallback(Uri? uri) async {
   if (uri?.host == 'refresh') {
-    await AuthService.instance.init();
+    await _initBackground();
     await _performRefresh();
   }
 }
 
+@pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     if (task == _taskName) {
-      await AuthService.instance.init();
-      await _performRefresh();
+      await _initBackground();
+      return _performRefresh();
     }
-    return Future.value(true);
+    return true;
   });
+}
+
+Future<void> _initBackground() async {
+  // A reused background engine keeps stale SharedPreferences caches;
+  // reload so this isolate sees tokens the app wrote after engine start.
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.reload();
+  await AuthService.instance.init();
 }
 
 Future<void> _write(List<MapEntry<Series, Episode>> items) async {
@@ -53,11 +62,11 @@ Future<void> _write(List<MapEntry<Series, Episode>> items) async {
   await HomeWidget.updateWidget(name: 'MyWatchWidgetProvider');
 }
 
-Future<void> _performRefresh() async {
+Future<bool> _performRefresh() async {
   final installedWidgets = await HomeWidget.getInstalledWidgets();
   if (installedWidgets.isEmpty) {
     // skip if widget is not installed
-    return;
+    return true;
   }
   try {
     final items = await ApiClient.instance.fetchUnwatchedEpisodes(
@@ -68,6 +77,7 @@ Future<void> _performRefresh() async {
       throw Exception('Could not reach the server');
     }
     await _write(items);
+    return true;
   } catch (e) {
     final errorJson = jsonEncode([
       {
@@ -85,14 +95,13 @@ Future<void> _performRefresh() async {
 
     await HomeWidget.saveWidgetData<String>('widget_towatch_data', errorJson);
     await HomeWidget.updateWidget(name: 'MyWatchWidgetProvider');
+    // false → WorkManager retries this run with backoff
+    return false;
   }
 }
 
 class WidgetUpdater {
-  static Future<void> initialize({
-    required int intervalMinutes,
-    bool force = false,
-  }) async {
+  static Future<void> initialize({required int intervalMinutes}) async {
     if (kIsWeb || !Platform.isAndroid) return;
 
     await HomeWidget.registerInteractivityCallback(widgetBackgroundCallback);
@@ -106,9 +115,10 @@ class WidgetUpdater {
       _taskName,
       _taskName,
       frequency: Duration(minutes: mins),
-      existingWorkPolicy: force
-          ? ExistingPeriodicWorkPolicy.replace
-          : ExistingPeriodicWorkPolicy.keep,
+      constraints: Constraints(networkType: NetworkType.connected),
+      // `update` applies new frequency/constraints to the already-scheduled
+      // task (`keep` would ignore them) while preserving its timing.
+      existingWorkPolicy: ExistingPeriodicWorkPolicy.update,
     );
   }
 

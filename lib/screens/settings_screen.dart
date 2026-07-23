@@ -81,7 +81,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _selectWidgetInterval(int minutes) async {
     setState(() => _widgetInterval = minutes);
     await SettingsService.instance.updateWidgetInterval(minutes);
-    await WidgetUpdater.initialize(intervalMinutes: minutes, force: true);
+    await WidgetUpdater.initialize(intervalMinutes: minutes);
   }
 
   void _logout() {

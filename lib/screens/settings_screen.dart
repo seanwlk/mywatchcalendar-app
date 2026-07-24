@@ -4,6 +4,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
 import '../services/settings_service.dart';
 import '../services/widget_updater.dart';
+import '../services/api_client.dart';
+import './admin_screen.dart';
 
 enum SettingsResult { none, logout }
 
@@ -86,6 +88,112 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _logout() {
     Navigator.of(context).pop(SettingsResult.logout);
+  }
+
+  Future<void> _showChangePasswordDialog() async {
+    final passwordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+
+    final success = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        bool isSubmitting = false;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Change Password'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: passwordController,
+                    decoration: const InputDecoration(
+                      labelText: 'New Password',
+                      hintText: 'Min. 8 characters',
+                    ),
+                    obscureText: true,
+                    enabled: !isSubmitting,
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: confirmPasswordController,
+                    decoration: const InputDecoration(
+                      labelText: 'Confirm Password',
+                    ),
+                    obscureText: true,
+                    enabled: !isSubmitting,
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () => Navigator.pop(context, false),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          final newPassword = passwordController.text;
+                          final confirmPassword =
+                              confirmPasswordController.text;
+
+                          if (newPassword.length < 8) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Password must be at least 8 characters',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+
+                          if (newPassword != confirmPassword) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Passwords do not match'),
+                              ),
+                            );
+                            return;
+                          }
+
+                          setState(() => isSubmitting = true);
+                          final result = await ApiClient.instance
+                              .selfChangePassword(newPassword);
+
+                          if (context.mounted) {
+                            Navigator.pop(context, result);
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (!mounted) return;
+
+    if (success == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password changed successfully')),
+      );
+    } else if (success == false) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to change password')),
+      );
+    }
   }
 
   @override
@@ -205,6 +313,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: const Text('Open GitHub page'),
               leading: const Icon(Icons.open_in_new),
               onTap: _openGithub,
+            ),
+            ListTile(
+              title: const Text('Change Password'),
+              leading: const Icon(Icons.lock_reset),
+              onTap: _showChangePasswordDialog,
             ),
             ListTile(
               title: const Text('Logout'),

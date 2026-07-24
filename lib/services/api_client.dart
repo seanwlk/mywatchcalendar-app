@@ -8,11 +8,17 @@ class ApiClient {
 
   static final ApiClient instance = ApiClient._();
 
+  static const Duration _timeout = Duration(seconds: 10);
+
+  final http.Client _client = http.Client();
+
   Future<UserStats?> fetchUserStats() async {
-    await _ensureAuth();
     try {
+      await _ensureAuth();
       final uri = Uri.parse('${AuthService.instance.apiBaseUrl}/user/stats');
-      final response = await http.get(uri, headers: _authHeaders());
+      final response = await _client
+          .get(uri, headers: _authHeaders())
+          .timeout(_timeout);
       if (response.statusCode == 200) {
         final body = json.decode(response.body);
         return UserStats.fromJson(body);
@@ -21,16 +27,19 @@ class ApiClient {
     return null;
   }
 
-  Future<List<MapEntry<Series, Episode>>> fetchUnwatchedEpisodes({
+  /// Returns null on failure, [] when the list is genuinely empty.
+  Future<List<MapEntry<Series, Episode>>?> fetchUnwatchedEpisodes({
     required int page,
     required int pageSize,
   }) async {
-    await _ensureAuth();
     try {
+      await _ensureAuth();
       final uri = Uri.parse(
         '${AuthService.instance.apiBaseUrl}/series/unwatched?page=$page&pageSize=$pageSize',
       );
-      final response = await http.get(uri, headers: _authHeaders());
+      final response = await _client
+          .get(uri, headers: _authHeaders())
+          .timeout(_timeout);
       if (response.statusCode == 200) {
         final body = json.decode(response.body)['items'];
         if (body is List) {
@@ -39,22 +48,26 @@ class ApiClient {
             return _parseEpisodeEntry(data);
           }).toList();
         }
+        return [];
       }
     } catch (_) {}
-    return [];
+    return null;
   }
 
-  Future<List<MapEntry<Series, Episode>>> fetchCalendarEpisodes({
+  /// Returns null on failure, [] when the list is genuinely empty.
+  Future<List<MapEntry<Series, Episode>>?> fetchCalendarEpisodes({
     required int page,
     required int pageSize,
     String direction = 'future',
   }) async {
-    await _ensureAuth();
     try {
+      await _ensureAuth();
       final uri = Uri.parse(
         '${AuthService.instance.apiBaseUrl}/series/calendar?page=$page&pageSize=$pageSize&direction=$direction',
       );
-      final response = await http.get(uri, headers: _authHeaders());
+      final response = await _client
+          .get(uri, headers: _authHeaders())
+          .timeout(_timeout);
       if (response.statusCode == 200) {
         final body = json.decode(response.body)['items'];
         if (body is List) {
@@ -63,22 +76,26 @@ class ApiClient {
             return _parseEpisodeEntry(data);
           }).toList();
         }
+        return [];
       }
     } catch (_) {}
-    return [];
+    return null;
   }
 
-  Future<List<Series>> searchSeries({
+  /// Returns null on failure, [] when there are genuinely no matches.
+  Future<List<Series>?> searchSeries({
     required String query,
     required int page,
     required int pageSize,
   }) async {
-    await _ensureAuth();
     try {
+      await _ensureAuth();
       final uri = Uri.parse(
         '${AuthService.instance.apiBaseUrl}/series/search?q=${Uri.encodeQueryComponent(query)}&page=$page&pageSize=$pageSize',
       );
-      final response = await http.get(uri, headers: _authHeaders());
+      final response = await _client
+          .get(uri, headers: _authHeaders())
+          .timeout(_timeout);
       if (response.statusCode == 200) {
         final body = json.decode(response.body)['items'];
         if (body is List) {
@@ -97,18 +114,21 @@ class ApiClient {
             );
           }).toList();
         }
+        return [];
       }
     } catch (_) {}
-    return [];
+    return null;
   }
 
   Future<Series?> fetchSeriesbyId(String seriesId) async {
-    await _ensureAuth();
     try {
+      await _ensureAuth();
       final uri = Uri.parse(
         '${AuthService.instance.apiBaseUrl}/series/$seriesId',
       );
-      final response = await http.get(uri, headers: _authHeaders());
+      final response = await _client
+          .get(uri, headers: _authHeaders())
+          .timeout(_timeout);
       if (response.statusCode == 200) {
         final body = json.decode(response.body);
         if (body is Map<String, dynamic>) {
@@ -120,12 +140,14 @@ class ApiClient {
   }
 
   Future<Series?> fetchEpisodebyId(String episodeId) async {
-    await _ensureAuth();
     try {
+      await _ensureAuth();
       final uri = Uri.parse(
         '${AuthService.instance.apiBaseUrl}/episodes/$episodeId',
       );
-      final response = await http.get(uri, headers: _authHeaders());
+      final response = await _client
+          .get(uri, headers: _authHeaders())
+          .timeout(_timeout);
       if (response.statusCode == 200) {
         final body = json.decode(response.body);
         if (body is Map<String, dynamic>) {
@@ -137,12 +159,14 @@ class ApiClient {
   }
 
   Future<Episode?> getNextUnwatchedEpisode(String seriesId) async {
-    await _ensureAuth();
     try {
+      await _ensureAuth();
       final uri = Uri.parse(
         '${AuthService.instance.apiBaseUrl}/series/$seriesId/next-unwatched-episode',
       );
-      final response = await http.get(uri, headers: _authHeaders());
+      final response = await _client
+          .get(uri, headers: _authHeaders())
+          .timeout(_timeout);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return Episode(
@@ -184,12 +208,14 @@ class ApiClient {
   }
 
   Future<Episode?> getEpisode(String episodeId) async {
-    await _ensureAuth();
     try {
+      await _ensureAuth();
       final uri = Uri.parse(
         '${AuthService.instance.apiBaseUrl}/episodes/$episodeId',
       );
-      final response = await http.get(uri, headers: _authHeaders());
+      final response = await _client
+          .get(uri, headers: _authHeaders())
+          .timeout(_timeout);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return Episode(
@@ -223,14 +249,16 @@ class ApiClient {
   }
 
   Future<bool> markEpisodeWatched(String episodeId, bool watched) async {
-    await _ensureAuth();
     try {
+      await _ensureAuth();
       final uri = Uri.parse(
         '${AuthService.instance.apiBaseUrl}/episodes/$episodeId/mark-watched',
       );
       final response = watched
-          ? await http.post(uri, headers: _authHeaders())
-          : await http.delete(uri, headers: _authHeaders());
+          ? await _client.post(uri, headers: _authHeaders()).timeout(_timeout)
+          : await _client
+                .delete(uri, headers: _authHeaders())
+                .timeout(_timeout);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return true;
@@ -240,14 +268,16 @@ class ApiClient {
   }
 
   Future<bool> followSeries(String seriesId, bool followed) async {
-    await _ensureAuth();
     try {
+      await _ensureAuth();
       final uri = Uri.parse(
         '${AuthService.instance.apiBaseUrl}/series/$seriesId/follow',
       );
       final response = followed
-          ? await http.post(uri, headers: _authHeaders())
-          : await http.delete(uri, headers: _authHeaders());
+          ? await _client.post(uri, headers: _authHeaders()).timeout(_timeout)
+          : await _client
+                .delete(uri, headers: _authHeaders())
+                .timeout(_timeout);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return true;
@@ -257,16 +287,18 @@ class ApiClient {
   }
 
   Future<bool> changeSeriesStatus(String seriesId, bool dropped) async {
-    await _ensureAuth();
     try {
+      await _ensureAuth();
       final uri = Uri.parse(
         '${AuthService.instance.apiBaseUrl}/series/$seriesId/status',
       );
-      final response = await http.patch(
-        uri,
-        headers: _authHeaders(),
-        body: jsonEncode({'status': dropped ? 'DROPPED' : 'WATCHING'}),
-      );
+      final response = await _client
+          .patch(
+            uri,
+            headers: _authHeaders(),
+            body: jsonEncode({'status': dropped ? 'DROPPED' : 'WATCHING'}),
+          )
+          .timeout(_timeout);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return true;

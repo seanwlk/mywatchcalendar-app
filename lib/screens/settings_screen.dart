@@ -3,8 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
 import '../services/settings_service.dart';
+import '../services/widget_updater.dart';
 
-enum SettingsResult { none, themeChanged, logout }
+enum SettingsResult { none, logout }
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -15,8 +16,19 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _endpointController = TextEditingController();
-  AppThemeChoice _choice = SettingsService.instance.themeChoice;
+  AppThemeChoice _choice = SettingsService.instance.themeChoice.value;
   bool _savingEndpoint = false;
+  int _widgetInterval = SettingsService.instance.widgetIntervalMinutes;
+
+  static const Map<int, String> _widgetIntervals = {
+    15: 'Every 15 minutes',
+    30: 'Every 30 minutes',
+    60: 'Every hour',
+    180: 'Every 3 hours',
+    360: 'Every 6 hours',
+    720: 'Every 12 hours',
+    1440: 'Once a day',
+  };
 
   @override
   void initState() {
@@ -64,15 +76,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _selectTheme(AppThemeChoice choice) async {
     setState(() => _choice = choice);
     await SettingsService.instance.updateTheme(choice);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Theme changed. Restart the app to apply the new theme.',
-          ),
-        ),
-      );
-    }
+  }
+
+  Future<void> _selectWidgetInterval(int minutes) async {
+    setState(() => _widgetInterval = minutes);
+    await SettingsService.instance.updateWidgetInterval(minutes);
+    await WidgetUpdater.initialize(intervalMinutes: minutes);
   }
 
   void _logout() {
@@ -145,6 +154,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
             ),
+
+            if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) ...[
+              const SizedBox(height: 24),
+              const Text(
+                'Home screen widget',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Refresh interval'),
+                subtitle: const Text(
+                  'How often the widget updates in the background',
+                ),
+                trailing: DropdownButton<int>(
+                  value: _widgetInterval,
+                  onChanged: (value) {
+                    if (value != null) {
+                      _selectWidgetInterval(value);
+                    }
+                  },
+                  items: _widgetIntervals.entries
+                      .map(
+                        (e) => DropdownMenuItem<int>(
+                          value: e.key,
+                          child: Text(e.value),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+            ],
 
             const SizedBox(height: 24),
             ListTile(

@@ -23,7 +23,6 @@ class _MyAppState extends State<MyApp> {
   bool _signedIn = false;
   String _username = '';
   String? _siteUrl;
-  AppThemeChoice _themeChoice = AppThemeChoice.amoledBlue;
 
   @override
   void initState() {
@@ -34,28 +33,29 @@ class _MyAppState extends State<MyApp> {
   Future<void> _initializeAuth() async {
     await AuthService.instance.init();
     await SettingsService.instance.init();
-    if (AuthService.instance.isSignedIn) {
-      final success = await AuthService.instance.ensureAccessToken();
-      if (success) {
-        setState(() {
-          _signedIn = true;
-          _username = AuthService.instance.username ?? '';
-          _siteUrl = AuthService.instance.siteUrl;
-        });
-      } else {
-        await AuthService.instance.logout(clearSiteUrl: false);
-        _siteUrl = AuthService.instance.siteUrl;
-      }
-    }
+
+    // Paint immediately using cached credentials.
     setState(() {
       _initialized = true;
-      _themeChoice = SettingsService.instance.themeChoice;
+      _signedIn = AuthService.instance.isSignedIn;
+      _username = AuthService.instance.username ?? '';
+      _siteUrl = AuthService.instance.siteUrl;
     });
 
-    await WidgetUpdater.initialize(intervalMinutes: 60);
+    // Validate behind the already-visible UI.
     if (_signedIn) {
-      WidgetUpdater.triggerNow();
+      final ok = await AuthService.instance.ensureAccessToken();
+      if (!ok && mounted) {
+        setState(() {
+          _signedIn = false;
+          _siteUrl = AuthService.instance.siteUrl;
+        });
+      }
     }
+
+    await WidgetUpdater.initialize(
+      intervalMinutes: SettingsService.instance.widgetIntervalMinutes,
+    );
   }
 
   Future<void> _onLogin(
@@ -79,12 +79,6 @@ class _MyAppState extends State<MyApp> {
       _signedIn = true;
       _username = username;
       _siteUrl = siteUrl;
-    });
-  }
-
-  void _handleThemeChanged() {
-    setState(() {
-      _themeChoice = SettingsService.instance.themeChoice;
     });
   }
 
@@ -235,34 +229,40 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    final currentTheme = _buildTheme(context, _themeChoice);
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'MyWatchCalendar',
-      theme: currentTheme,
-      scaffoldMessengerKey: _scaffoldMessengerKey,
-      builder: (context, child) {
-        final screenWidth = MediaQuery.sizeOf(context).width;
-        final responsiveMaxWidth = (screenWidth * 0.45).clamp(600.0, 1200.0);
-        return Container(
-          color: currentTheme.scaffoldBackgroundColor,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: responsiveMaxWidth),
-              child: ClipRect(child: child ?? const SizedBox.shrink()),
-            ),
-          ),
+    return ValueListenableBuilder<AppThemeChoice>(
+      valueListenable: SettingsService.instance.themeChoice,
+      builder: (context, choice, _) {
+        final currentTheme = _buildTheme(context, choice);
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'MyWatchCalendar',
+          theme: currentTheme,
+          scaffoldMessengerKey: _scaffoldMessengerKey,
+          builder: (context, child) {
+            final screenWidth = MediaQuery.sizeOf(context).width;
+            final responsiveMaxWidth = (screenWidth * 0.45).clamp(
+              600.0,
+              1200.0,
+            );
+            return Container(
+              color: currentTheme.scaffoldBackgroundColor,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: responsiveMaxWidth),
+                  child: ClipRect(child: child ?? const SizedBox.shrink()),
+                ),
+              ),
+            );
+          },
+          home: _initialized
+              ? (_signedIn
+                    ? HomeScreen(username: _username, onLogout: _handleLogout)
+                    : LoginScreen(onLogin: _onLogin, initialSiteUrl: _siteUrl))
+              : const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                ),
         );
       },
-      home: _initialized
-          ? (_signedIn
-                ? HomeScreen(
-                    username: _username,
-                    onLogout: _handleLogout,
-                    onThemeChanged: _handleThemeChanged,
-                  )
-                : LoginScreen(onLogin: _onLogin, initialSiteUrl: _siteUrl))
-          : const Scaffold(body: Center(child: CircularProgressIndicator())),
     );
   }
 }

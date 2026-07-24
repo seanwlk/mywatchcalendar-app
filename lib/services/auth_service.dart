@@ -21,6 +21,9 @@ class AuthService {
 
   final ValueNotifier<bool> authStateNotifier = ValueNotifier<bool>(true);
 
+  static const Duration _timeout = Duration(seconds: 8);
+  Future<bool>? _refreshInFlight;
+
   AuthService._internal() : _client = http.Client();
 
   AuthService({http.Client? client}) : _client = client ?? http.Client();
@@ -78,6 +81,20 @@ class AuthService {
     if (accessToken != null && !_isTokenExpired(accessToken)) {
       return true;
     }
+
+    final existing = _refreshInFlight;
+    if (existing != null) return existing;
+
+    final future = _refreshAndPersist();
+    _refreshInFlight = future;
+    try {
+      return await future;
+    } finally {
+      if (identical(_refreshInFlight, future)) _refreshInFlight = null;
+    }
+  }
+
+  Future<bool> _refreshAndPersist() async {
     final refreshed = await refreshTokens();
     if (!refreshed) {
       await logout(clearSiteUrl: false);
@@ -168,11 +185,13 @@ class AuthService {
     if (siteUrl == null) return false;
     try {
       final uri = Uri.parse('$siteUrl/api/auth/login');
-      final response = await _client.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'username': username, 'password': password}),
-      );
+      final response = await _client
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'username': username, 'password': password}),
+          )
+          .timeout(_timeout);
       if (response.statusCode != 201) return false;
       final body = json.decode(response.body);
       if (body is Map<String, dynamic> &&
@@ -192,11 +211,13 @@ class AuthService {
     if (siteUrl == null || refreshToken == null) return false;
     try {
       final uri = Uri.parse('$siteUrl/api/auth/refresh');
-      final response = await _client.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'refreshToken': refreshToken}),
-      );
+      final response = await _client
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'refreshToken': refreshToken}),
+          )
+          .timeout(_timeout);
       if (response.statusCode != 201) return false;
       final body = json.decode(response.body);
       if (body is Map<String, dynamic> &&

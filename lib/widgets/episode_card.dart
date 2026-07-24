@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../models.dart';
 
@@ -68,23 +69,25 @@ class EpisodeCard extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(6),
-                child: Image.network(
-                  series.posterUrl,
+                child: CachedNetworkImage(
+                  imageUrl: series.posterUrl,
                   width: 64,
                   height: 96,
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      width: 64,
-                      height: 96,
-                      color: Colors.grey[800],
-                      child: const Icon(
-                        Icons.image_not_supported,
-                        color: Colors.grey,
-                        size: 30,
-                      ),
-                    );
-                  },
+                  memCacheWidth: 192,
+                  fadeInDuration: const Duration(milliseconds: 150),
+                  placeholder: (context, url) =>
+                      Container(width: 64, height: 96, color: Colors.grey[900]),
+                  errorWidget: (context, url, error) => Container(
+                    width: 64,
+                    height: 96,
+                    color: Colors.grey[800],
+                    child: const Icon(
+                      Icons.image_not_supported,
+                      color: Colors.grey,
+                      size: 30,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),

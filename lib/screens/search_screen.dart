@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../models.dart';
 import '../services/api_client.dart';
@@ -17,8 +18,10 @@ class _SearchScreenState extends State<SearchScreen> {
   final _scrollController = ScrollController();
   final List<Series> _results = [];
   bool _loading = false;
+  bool _failed = false;
   bool _hasMore = false;
   int _page = 1;
+  int _searchSeq = 0;
   static const int _pageSize = 30;
   String _currentQuery = '';
 
@@ -56,27 +59,41 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Future<void> _performSearch(String query) async {
-    _currentQuery = query.trim();
-    _page = 1;
-    _hasMore = true;
-    _results.clear();
-    if (_currentQuery.isEmpty) {
-      setState(() {});
-      return;
-    }
-    await _loadNextPage();
+    final seq = ++_searchSeq; // invalidates anything already in flight
+    setState(() {
+      _currentQuery = query.trim();
+      _page = 1;
+      _hasMore = true;
+      _loading = false;
+      _failed = false;
+      _results.clear();
+    });
+    if (_currentQuery.isEmpty) return;
+    await _loadNextPage(seq);
   }
 
-  Future<void> _loadNextPage() async {
-    if (_currentQuery.isEmpty) return;
+  Future<void> _loadNextPage([int? seq]) async {
+    final token = seq ?? _searchSeq;
+    if (_currentQuery.isEmpty || _loading) return;
+
     setState(() => _loading = true);
     final nextResults = await ApiClient.instance.searchSeries(
       query: _currentQuery,
       page: _page,
       pageSize: _pageSize,
     );
+
+    // Dropped if the widget is gone or a newer search superseded this one.
+    if (!mounted || token != _searchSeq) return;
+
     setState(() {
       _loading = false;
+      if (nextResults == null) {
+        _failed = _results.isEmpty;
+        _hasMore = false;
+        return;
+      }
+      _failed = false;
       _results.addAll(nextResults);
       if (nextResults.length == _pageSize) {
         _page += 1;
@@ -116,6 +133,9 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool showEmptyState =
+        _currentQuery.isNotEmpty && !_loading && _results.isEmpty;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Search')),
       body: Column(
@@ -132,49 +152,76 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
           ),
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              itemCount: _results.length + (_loading ? 1 : 0),
-              itemBuilder: (context, idx) {
-                if (idx >= _results.length) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20),
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                }
-                if (_results.isEmpty) return const SizedBox.shrink();
+            child: showEmptyState
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _failed ? Icons.cloud_off : Icons.search_off,
+                          size: 48,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          _failed
+                              ? "Couldn't reach the server"
+                              : 'No results for "$_currentQuery"',
+                        ),
+                        if (_failed) ...[
+                          const SizedBox(height: 12),
+                          FilledButton.icon(
+                            onPressed: () => _performSearch(_currentQuery),
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Retry'),
+                          ),
+                        ],
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    controller: _scrollController,
+                    itemCount: _results.length + (_loading ? 1 : 0),
+                    itemBuilder: (context, idx) {
+                      if (idx >= _results.length) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
 
-                final s = _results[idx];
+                      final s = _results[idx];
 
-                return ListTile(
-                  leading: SizedBox(
-                    width: 50,
-                    child: Image.network(
-                      s.posterUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => const Icon(Icons.broken_image),
-                    ),
+                      return ListTile(
+                        leading: SizedBox(
+                          width: 50,
+                          child: CachedNetworkImage(
+                            imageUrl: s.posterUrl,
+                            fit: BoxFit.cover,
+                            memCacheWidth: 150,
+                            errorWidget: (_, _, _) =>
+                                const Icon(Icons.broken_image),
+                          ),
+                        ),
+                        title: Text(s.title),
+                        subtitle: Text(s.startDate.year.toString()),
+                        trailing: IconButton(
+                          icon: Icon(
+                            s.isFollowed
+                                ? Icons.check_box_rounded
+                                : Icons.add_box_outlined,
+                            color: s.isFollowed ? Colors.red : null,
+                          ),
+                          onPressed: () => _toggleFollow(s),
+                        ),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => SeriesInfoScreen(series: s),
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                  title: Text(s.title),
-                  subtitle: Text(s.startDate.year.toString()),
-                  trailing: IconButton(
-                    icon: Icon(
-                      s.isFollowed
-                          ? Icons.check_box_rounded
-                          : Icons.add_box_outlined,
-                      color: s.isFollowed ? Colors.red : null,
-                    ),
-                    onPressed: () => _toggleFollow(s),
-                  ),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => SeriesInfoScreen(series: s),
-                    ),
-                  ),
-                );
-              },
-            ),
           ),
         ],
       ),

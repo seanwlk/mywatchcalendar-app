@@ -6,13 +6,11 @@ import '../models.dart';
 class ProfileScreen extends StatefulWidget {
   final String username;
   final VoidCallback onLogout;
-  final VoidCallback onThemeChanged;
 
   const ProfileScreen({
     super.key,
     required this.username,
     required this.onLogout,
-    required this.onThemeChanged,
   });
 
   @override
@@ -30,12 +28,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadStats() async {
-    final stats = await ApiClient.instance.fetchUserStats();
-    if (mounted) {
-      setState(() {
-        _stats = stats;
-        _isLoading = false;
-      });
+    // Only show the full-screen spinner when there is nothing to display;
+    // a pull-to-refresh over existing stats keeps them visible.
+    if (_stats == null) setState(() => _isLoading = true);
+    try {
+      final stats = await ApiClient.instance.fetchUserStats();
+      if (!mounted) return;
+      setState(() => _stats = stats);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -74,14 +75,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         backgroundColor: Colors.transparent,
         actions: [
           IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh',
+            onPressed: _isLoading ? null : _loadStats,
+          ),
+          IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () async {
               final result = await Navigator.of(context).push<SettingsResult>(
                 MaterialPageRoute(builder: (_) => const SettingsScreen()),
               );
-              if (result == SettingsResult.themeChanged) {
-                widget.onThemeChanged();
-              }
               if (result == SettingsResult.logout) {
                 widget.onLogout();
               }
@@ -91,6 +94,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
+          : _stats == null
+          ? RefreshIndicator(
+              onRefresh: _loadStats,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(height: MediaQuery.sizeOf(context).height * 0.25),
+                  Center(
+                    child: Column(
+                      children: [
+                        const Icon(Icons.cloud_off, size: 48),
+                        const SizedBox(height: 12),
+                        const Text("Couldn't load your stats"),
+                        const SizedBox(height: 12),
+                        FilledButton.icon(
+                          onPressed: _loadStats,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            )
           : RefreshIndicator(
               onRefresh: _loadStats,
               child: SingleChildScrollView(

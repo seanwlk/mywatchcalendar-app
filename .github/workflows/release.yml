@@ -33,19 +33,24 @@ jobs:
         run: flutter pub get
 
       - name: Build Android APK
-        run: flutter build apk --release
+        run: flutter build apk --release --obfuscate --split-debug-info=build/symbols
 
       - name: Build Android APK arm64
-        run: flutter build apk --release --target-platform android-arm64 --split-per-abi
+        run: >
+          flutter build apk --release --target-platform android-arm64 --split-per-abi
+          --obfuscate --split-debug-info=build/symbols
 
       - name: Build Web App
-        run: flutter build web --release
+        run: flutter build web --release --no-web-resources-cdn
 
       - name: Compress Web Build
         run: |
           cd build/web
           zip -r ../../web-release.zip .
           cd ../..
+
+      - name: Compress Debug Symbols
+        run: zip -r symbols.zip build/symbols
 
       - name: Upload Artifacts to Release
         uses: softprops/action-gh-release@v2
@@ -54,5 +59,6 @@ jobs:
             build/app/outputs/flutter-apk/app-release.apk
             build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
             web-release.zip
+            symbols.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../models.dart';
 import '../services/api_client.dart';
@@ -148,17 +149,15 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
       }
     });
 
+    const int maxConcurrent = 4;
     bool hasError = false;
-
-    await Future.wait(
-      episodesToUpdate.map((e) async {
-        final success = await ApiClient.instance.markEpisodeWatched(
-          e.id,
-          newStatus,
-        );
-        if (!success) hasError = true;
-      }),
-    );
+    for (var i = 0; i < episodesToUpdate.length; i += maxConcurrent) {
+      final chunk = episodesToUpdate.skip(i).take(maxConcurrent);
+      final results = await Future.wait(
+        chunk.map((e) => ApiClient.instance.markEpisodeWatched(e.id, newStatus)),
+      );
+      if (results.any((ok) => !ok)) hasError = true;
+    }
 
     if (!mounted) return;
 
@@ -171,7 +170,6 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
   }
 
   @override
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
@@ -181,10 +179,11 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
             left: 0,
             right: 0,
             height: 300,
-            child: Image.network(
-              _currentSeries.posterUrl,
+            child: CachedNetworkImage(
+              imageUrl: _currentSeries.posterUrl,
               fit: BoxFit.cover,
-              errorBuilder: (_, _, _) =>
+              memCacheWidth: 1080,
+              errorWidget: (_, _, _) =>
                   const Center(child: Icon(Icons.broken_image)),
             ),
           ),
@@ -399,12 +398,13 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
     return ListTile(
       leading: ClipRRect(
         borderRadius: BorderRadius.circular(4),
-        child: Image.network(
-          e.imageUrl,
+        child: CachedNetworkImage(
+          imageUrl: e.imageUrl,
           width: 60,
           height: 40,
           fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => const Icon(Icons.broken_image),
+          memCacheWidth: 180,
+          errorWidget: (_, _, _) => const Icon(Icons.broken_image),
         ),
       ),
       title: Text(

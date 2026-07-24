@@ -6,62 +6,78 @@ import 'package:workmanager/workmanager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_client.dart';
 import 'auth_service.dart';
+import '../models.dart';
 
 const String _taskName = 'widget_refresh_task';
 
 @pragma('vm:entry-point')
 Future<void> widgetBackgroundCallback(Uri? uri) async {
   if (uri?.host == 'refresh') {
-    await AuthService.instance.init();
+    await _initBackground();
     await _performRefresh();
   }
 }
 
+@pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     if (task == _taskName) {
-      await AuthService.instance.init();
-      await _performRefresh();
+      await _initBackground();
+      return _performRefresh();
     }
-    return Future.value(true);
+    return true;
   });
 }
 
-Future<void> _performRefresh() async {
+Future<void> _initBackground() async {
+  // A reused background engine keeps stale SharedPreferences caches;
+  // reload so this isolate sees tokens the app wrote after engine start.
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.reload();
+  await AuthService.instance.init();
+}
+
+Future<void> _write(List<MapEntry<Series, Episode>> items) async {
+  final payload = jsonEncode(
+    items
+        .map(
+          (e) => {
+            'series_id': e.key.id,
+            'series_title': e.key.title,
+            'episode_id': e.value.id,
+            'episode_title': e.value.title,
+            'air_date': e.value.airDate.toIso8601String(),
+            'poster_url': e.key.posterUrl,
+            'season_number': e.value.season,
+            'episode_number': e.value.number,
+            'episodes_left': e.value.episodesLeft,
+          },
+        )
+        .toList(),
+  );
+
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString('widget_towatch', payload);
+  await HomeWidget.saveWidgetData<String>('widget_towatch_data', payload);
+  await HomeWidget.updateWidget(name: 'MyWatchWidgetProvider');
+}
+
+Future<bool> _performRefresh() async {
   final installedWidgets = await HomeWidget.getInstalledWidgets();
   if (installedWidgets.isEmpty) {
     // skip if widget is not installed
-    return;
+    return true;
   }
   try {
-    final prefs = await SharedPreferences.getInstance();
-
-    final toWatch = await ApiClient.instance.fetchUnwatchedEpisodes(
+    final items = await ApiClient.instance.fetchUnwatchedEpisodes(
       page: 1,
       pageSize: 30,
     );
-
-    final toWatchJson = jsonEncode(
-      toWatch
-          .map(
-            (e) => {
-              'series_id': e.key.id,
-              'series_title': e.key.title,
-              'episode_id': e.value.id,
-              'episode_title': e.value.title,
-              'air_date': e.value.airDate.toIso8601String(),
-              'poster_url': e.key.posterUrl,
-              'season_number': e.value.season,
-              'episode_number': e.value.number,
-              'episodes_left': e.value.episodesLeft,
-            },
-          )
-          .toList(),
-    );
-
-    await prefs.setString('widget_towatch', toWatchJson);
-    await HomeWidget.saveWidgetData<String>('widget_towatch_data', toWatchJson);
-    await HomeWidget.updateWidget(name: 'MyWatchWidgetProvider');
+    if (items == null) {
+      throw Exception('Could not reach the server');
+    }
+    await _write(items);
+    return true;
   } catch (e) {
     final errorJson = jsonEncode([
       {
@@ -73,11 +89,14 @@ Future<void> _performRefresh() async {
         'poster_url': '',
         'season_number': 0,
         'episode_number': 0,
+        'episodes_left': 0,
       },
     ]);
 
     await HomeWidget.saveWidgetData<String>('widget_towatch_data', errorJson);
     await HomeWidget.updateWidget(name: 'MyWatchWidgetProvider');
+    // false → WorkManager retries this run with backoff
+    return false;
   }
 }
 
@@ -96,12 +115,20 @@ class WidgetUpdater {
       _taskName,
       _taskName,
       frequency: Duration(minutes: mins),
-      existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
+      constraints: Constraints(networkType: NetworkType.connected),
+      // `update` applies new frequency/constraints to the already-scheduled
+      // task (`keep` would ignore them) while preserving its timing.
+      existingWorkPolicy: ExistingPeriodicWorkPolicy.update,
     );
   }
 
-  static Future<void> triggerNow() async {
+  /// Publish already-fetched data — avoids a duplicate network round trip.
+  static Future<void> publish(List<MapEntry<Series, Episode>> items) async {
     if (kIsWeb || !Platform.isAndroid) return;
-    await _performRefresh();
+    try {
+      final installedWidgets = await HomeWidget.getInstalledWidgets();
+      if (installedWidgets.isEmpty) return;
+      await _write(items);
+    } catch (_) {}
   }
 }

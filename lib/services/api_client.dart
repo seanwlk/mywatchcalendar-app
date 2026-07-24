@@ -409,4 +409,149 @@ class ApiClient {
       'Authorization': auth.bearerToken,
     };
   }
+
+  Future<List<AdminUser>?> fetchAllUsers() async {
+    try {
+      await _ensureAuth();
+      final uri = Uri.parse('${AuthService.instance.apiBaseUrl}/admin/users');
+      final response = await _client
+          .get(uri, headers: _authHeaders())
+          .timeout(_timeout);
+      if (response.statusCode == 200) {
+        final body = json.decode(response.body);
+        if (body is List) {
+          return body.map((item) => AdminUser.fromJson(item)).toList();
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<bool> createAdminUser(
+    String username,
+    String password,
+    String name,
+    bool isAdmin,
+  ) async {
+    try {
+      await _ensureAuth();
+      final uri = Uri.parse('${AuthService.instance.apiBaseUrl}/admin/users');
+      final response = await _client
+          .post(
+            uri,
+            headers: _authHeaders(),
+            body: jsonEncode({
+              'username': username,
+              'password': password,
+              'name': name,
+              'isAdmin': isAdmin,
+            }),
+          )
+          .timeout(_timeout);
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {}
+    return false;
+  }
+
+  Future<bool> updateAdminUser(
+    String id, {
+    String? username,
+    String? name,
+    bool? isAdmin,
+  }) async {
+    try {
+      await _ensureAuth();
+      final uri = Uri.parse(
+        '${AuthService.instance.apiBaseUrl}/admin/users/$id',
+      );
+      final Map<String, dynamic> payload = {};
+      if (username != null) payload['username'] = username;
+      if (name != null) payload['name'] = name;
+      if (isAdmin != null) payload['isAdmin'] = isAdmin;
+
+      final response = await _client
+          .put(uri, headers: _authHeaders(), body: jsonEncode(payload))
+          .timeout(_timeout);
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {}
+    return false;
+  }
+
+  Future<bool> deleteAdminUser(String id) async {
+    try {
+      await _ensureAuth();
+      final uri = Uri.parse(
+        '${AuthService.instance.apiBaseUrl}/admin/users/$id',
+      );
+      final response = await _client
+          .delete(uri, headers: _authHeaders())
+          .timeout(_timeout);
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {}
+    return false;
+  }
+
+  Future<bool> resetUserPassword(String id, String newPassword) async {
+    try {
+      await _ensureAuth();
+      final uri = Uri.parse(
+        '${AuthService.instance.apiBaseUrl}/admin/users/$id/reset-password',
+      );
+      final response = await _client
+          .post(
+            uri,
+            headers: _authHeaders(),
+            body: jsonEncode({'newPassword': newPassword}),
+          )
+          .timeout(_timeout);
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {}
+    return false;
+  }
+
+  Future<bool> selfChangePassword(String newPassword) async {
+    try {
+      await _ensureAuth();
+      final uri = Uri.parse(
+        '${AuthService.instance.apiBaseUrl}/auth/change-password',
+      );
+      final response = await _client
+          .post(
+            uri,
+            headers: _authHeaders(),
+            body: jsonEncode({'newPassword': newPassword}),
+          )
+          .timeout(_timeout);
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {}
+    return false;
+  }
+
+  Future<bool> syncAllSeries() async {
+    try {
+      await _ensureAuth();
+      final uri = Uri.parse(
+        '${AuthService.instance.apiBaseUrl}/admin/sync/all',
+      );
+      final response = await _client
+          .post(uri, headers: _authHeaders())
+          .timeout(_timeout);
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {}
+    return false;
+  }
+
+  Future<bool> syncSingleSeries(int tmdbId) async {
+    try {
+      await _ensureAuth();
+      final uri = Uri.parse(
+        '${AuthService.instance.apiBaseUrl}/admin/sync/$tmdbId',
+      );
+      final response = await _client
+          .post(uri, headers: _authHeaders())
+          .timeout(_timeout);
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {}
+    return false;
+  }
 }

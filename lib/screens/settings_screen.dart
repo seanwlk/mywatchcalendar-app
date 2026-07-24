@@ -185,7 +185,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ],
-
+            if (AuthService.instance.isAdmin) ...[
+              const SizedBox(height: 24),
+              ListTile(
+                title: const Text('Admin Dashboard'),
+                leading: const Icon(Icons.admin_panel_settings),
+                iconColor: Theme.of(context).colorScheme.primary,
+                textColor: Theme.of(context).colorScheme.primary,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AdminScreen()),
+                  );
+                },
+              ),
+            ],
             const SizedBox(height: 24),
             ListTile(
               title: const Text('Open GitHub page'),

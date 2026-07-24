@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart'; // Required for TextInput autofill signals
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -45,6 +45,12 @@ class AuthService {
       refreshToken != null && !_isTokenExpired(refreshToken);
   bool get isSignedIn =>
       hasSavedSite && accessToken != null && refreshToken != null;
+  bool get isAdmin {
+    if (accessToken == null) return false;
+    final payload = _decodeJwtPayload(accessToken!);
+    if (payload == null) return false;
+    return payload['isAdmin'] == true;
+  }
 
   String get apiBaseUrl {
     final normalized = siteUrl?.trim().replaceAll(RegExp(r'/+ *$'), '');

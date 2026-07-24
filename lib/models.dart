@@ -70,3 +70,36 @@ class UserStats {
     );
   }
 }
+
+class AdminUser {
+  final String id;
+  final String username;
+  final String name;
+  final bool isAdmin;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  AdminUser({
+    required this.id,
+    required this.username,
+    required this.name,
+    required this.isAdmin,
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  factory AdminUser.fromJson(Map<String, dynamic> json) {
+    return AdminUser(
+      id: json['id']?.toString() ?? '',
+      username: json['username']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      isAdmin: json['isAdmin'] == true,
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'])
+          : null,
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.tryParse(json['updatedAt'])
+          : null,
+    );
+  }
+}

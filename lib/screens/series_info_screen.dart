@@ -154,7 +154,9 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
     for (var i = 0; i < episodesToUpdate.length; i += maxConcurrent) {
       final chunk = episodesToUpdate.skip(i).take(maxConcurrent);
       final results = await Future.wait(
-        chunk.map((e) => ApiClient.instance.markEpisodeWatched(e.id, newStatus)),
+        chunk.map(
+          (e) => ApiClient.instance.markEpisodeWatched(e.id, newStatus),
+        ),
       );
       if (results.any((ok) => !ok)) hasError = true;
     }
@@ -309,10 +311,15 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
                   delegate: SliverChildBuilderDelegate((context, idx) {
                     final season = _currentSeries.seasons[idx];
 
-                    // Check if the entire season is currently watched
+                    final int totalEpisodes = season.episodes.length;
+                    final int watchedEpisodes = season.episodes
+                        .where((e) => e.watched)
+                        .length;
+                    final double progress = totalEpisodes > 0
+                        ? (watchedEpisodes / totalEpisodes)
+                        : 0.0;
                     final bool allWatched =
-                        season.episodes.isNotEmpty &&
-                        season.episodes.every((e) => e.watched);
+                        totalEpisodes > 0 && watchedEpisodes == totalEpisodes;
 
                     return Material(
                       color: Theme.of(context).scaffoldBackgroundColor,
@@ -325,6 +332,13 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
                                   : 'Season ${season.number}',
                             ),
                             const Spacer(),
+                            Text(
+                              '$watchedEpisodes/$totalEpisodes',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey,
+                              ),
+                            ),
                             IconButton(
                               onPressed: () async {
                                 final String statusText = !allWatched
@@ -370,6 +384,15 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
                               ),
                             ),
                           ],
+                        ),
+                        subtitle: Container(
+                          margin: const EdgeInsets.only(top: 8),
+                          height: 4,
+                          child: LinearProgressIndicator(
+                            value: progress,
+                            backgroundColor: Colors.grey.withValues(alpha: 0.2),
+                            color: allWatched ? Colors.green : Colors.yellow,
+                          ),
                         ),
                         children: season.episodes
                             .map((e) => _buildEpisodeTile(e))

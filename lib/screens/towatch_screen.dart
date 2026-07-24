@@ -55,7 +55,6 @@ class _ToWatchScreenState extends State<ToWatchScreen> {
         page: requestedPage,
         pageSize: _pageSize,
       );
-      // Dropped if the widget is gone or a refresh superseded this load.
       if (!mounted || token != _loadSeq) return;
       setState(() {
         if (nextItems == null) {
@@ -70,10 +69,6 @@ class _ToWatchScreenState extends State<ToWatchScreen> {
           if (nextItems.length < _pageSize) _hasMore = false;
         }
       });
-      // Reuse the data just fetched to refresh the home-screen widget,
-      // avoiding a duplicate /unwatched round trip at launch. An empty
-      // first page publishes too, so the widget clears when everything
-      // has been watched.
       if (requestedPage == 1 && nextItems != null) {
         WidgetUpdater.publish(nextItems.take(30).toList());
       }
@@ -83,7 +78,7 @@ class _ToWatchScreenState extends State<ToWatchScreen> {
   }
 
   Future<void> _refresh() async {
-    _loadSeq++; // drop any in-flight page load
+    _loadSeq++;
     setState(() {
       _page = 1;
       _items.clear();
@@ -128,7 +123,6 @@ class _ToWatchScreenState extends State<ToWatchScreen> {
 
     if (!success) {
       setState(() {
-        // Skip the rollback if a refresh already restored the row.
         if (!_items.any((e) => e.value.id == removed.value.id)) {
           _items.insert(index.clamp(0, _items.length), removed);
         }
@@ -139,10 +133,8 @@ class _ToWatchScreenState extends State<ToWatchScreen> {
       return;
     }
 
-    // Success: pull the next unwatched episode for this series back into list.
     final next = await ApiClient.instance.getNextUnwatchedEpisode(series.id);
     if (!mounted || next == null) return;
-    // A refresh may have completed meanwhile and already contain it.
     if (_items.any((e) => e.value.id == next.id)) return;
     setState(
       () =>

@@ -27,7 +27,6 @@ class ApiClient {
     return null;
   }
 
-  /// Returns null on failure, [] when the list is genuinely empty.
   Future<List<MapEntry<Series, Episode>>?> fetchUnwatchedEpisodes({
     required int page,
     required int pageSize,
@@ -54,7 +53,6 @@ class ApiClient {
     return null;
   }
 
-  /// Returns null on failure, [] when the list is genuinely empty.
   Future<List<MapEntry<Series, Episode>>?> fetchCalendarEpisodes({
     required int page,
     required int pageSize,
@@ -82,7 +80,6 @@ class ApiClient {
     return null;
   }
 
-  /// Returns null on failure, [] when there are genuinely no matches.
   Future<List<Series>?> searchSeries({
     required String query,
     required int page,
@@ -186,7 +183,7 @@ class ApiClient {
                       data['latestEpisode']['episodeNumber']?.toString() ?? '1',
                     ) ??
                     1,
-          title: data['latestEpisode']['title']?.toString() ?? 'Episode',
+          title: data['latestEpisode']['title']?.toString() ?? 'TBD',
           imageUrl: data['latestEpisode']['posterUrl']?.toString() ?? '',
           airDate:
               DateTime.tryParse(
@@ -200,7 +197,8 @@ class ApiClient {
                       data['latestEpisode']['episodesLeft']?.toString() ?? '0',
                     ) ??
                     0,
-          description: data['latestEpisode']['overview']?.toString() ?? '',
+          description:
+              data['latestEpisode']['overview']?.toString() ?? 'No data',
         );
       }
     } catch (_) {}
@@ -235,13 +233,13 @@ class ApiClient {
                       data['episode']['episodeNumber']?.toString() ?? '1',
                     ) ??
                     1,
-          title: data['episode']['title']?.toString() ?? 'Episode',
+          title: data['episode']['title']?.toString() ?? 'TBD',
           imageUrl: data['episode']['posterUrl']?.toString() ?? '',
           airDate:
               DateTime.tryParse(data['episode']['airDate']?.toString() ?? '') ??
               DateTime.now(),
           watched: data['watched'] == true,
-          description: data['episode']['overview']?.toString() ?? '',
+          description: data['episode']['overview']?.toString() ?? 'No Data',
         );
       }
     } catch (_) {}
@@ -344,7 +342,7 @@ class ApiClient {
                   data['latestEpisode']['episodeNumber']?.toString() ?? '1',
                 ) ??
                 1,
-      title: data['latestEpisode']['title']?.toString() ?? 'Episode',
+      title: data['latestEpisode']['title']?.toString() ?? 'TBD',
       imageUrl: data['latestEpisode']['posterUrl']?.toString() ?? '',
       airDate:
           DateTime.tryParse(
@@ -358,7 +356,7 @@ class ApiClient {
                   data['latestEpisode']['episodesLeft']?.toString() ?? '0',
                 ) ??
                 0,
-      description: data['latestEpisode']['overview']?.toString() ?? '',
+      description: data['latestEpisode']['overview']?.toString() ?? 'No data',
     );
     return MapEntry(series, episode);
   }
@@ -372,7 +370,7 @@ class ApiClient {
           parsedEpisodes = (seasonJson['episodes'] as List).map((epJson) {
             return Episode(
               id: epJson['id']?.toString() ?? 'unknown',
-              title: epJson['title']?.toString() ?? 'Unknown',
+              title: epJson['title']?.toString() ?? 'TBD',
               number: epJson['episodeNumber'] ?? 0,
               season: epJson['seasonNumber'] ?? 0,
               airDate:
@@ -380,7 +378,7 @@ class ApiClient {
                   DateTime.now(),
               imageUrl: epJson['posterUrl']?.toString() ?? '',
               watched: epJson['watched'] ?? false,
-              description: epJson['overview'] ?? '',
+              description: epJson['overview'] ?? 'No data',
             );
           }).toList();
         }
@@ -392,9 +390,9 @@ class ApiClient {
     }
     return Series(
       id: data['id']?.toString() ?? 'unknown',
-      title: data['title']?.toString() ?? 'Series',
+      title: data['title']?.toString() ?? 'TBD',
       posterUrl: data['posterUrl']?.toString() ?? '',
-      description: data['overview']?.toString() ?? '',
+      description: data['overview']?.toString() ?? 'No data',
       startDate:
           DateTime.tryParse(data['releaseDate']?.toString() ?? '') ??
           DateTime.now(),

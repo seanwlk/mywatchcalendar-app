@@ -34,7 +34,6 @@ class _MyAppState extends State<MyApp> {
     await AuthService.instance.init();
     await SettingsService.instance.init();
 
-    // Paint immediately using cached credentials.
     setState(() {
       _initialized = true;
       _signedIn = AuthService.instance.isSignedIn;
@@ -42,7 +41,6 @@ class _MyAppState extends State<MyApp> {
       _siteUrl = AuthService.instance.siteUrl;
     });
 
-    // Validate behind the already-visible UI.
     if (_signedIn) {
       final ok = await AuthService.instance.ensureAccessToken();
       if (!ok && mounted) {

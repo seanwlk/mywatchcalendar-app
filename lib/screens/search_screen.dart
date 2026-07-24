@@ -49,17 +49,15 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _search(String query) {
-    // Cancel the previous timer if the user keeps typing
     if (_debounce?.isActive ?? false) _debounce!.cancel();
 
-    // Start a new timer
     _debounce = Timer(const Duration(milliseconds: 500), () {
       _performSearch(query);
     });
   }
 
   Future<void> _performSearch(String query) async {
-    final seq = ++_searchSeq; // invalidates anything already in flight
+    final seq = ++_searchSeq;
     setState(() {
       _currentQuery = query.trim();
       _page = 1;
@@ -83,7 +81,6 @@ class _SearchScreenState extends State<SearchScreen> {
       pageSize: _pageSize,
     );
 
-    // Dropped if the widget is gone or a newer search superseded this one.
     if (!mounted || token != _searchSeq) return;
 
     setState(() {

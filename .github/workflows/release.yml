@@ -40,7 +40,7 @@ jobs:
           echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/key.properties
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
           echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
-          echo "storeFile=./mwc-keystore.jks" >> android/key.properties
+          echo "storeFile=../mwc-keystore.jks" >> android/key.properties
 
       - name: Build Android APK
         run: flutter build apk --release --obfuscate --split-debug-info=build/symbols

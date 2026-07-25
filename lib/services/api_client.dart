@@ -103,6 +103,7 @@ class ApiClient {
               title: data['title']?.toString() ?? 'Series',
               posterUrl: data['posterUrl']?.toString() ?? '',
               description: data['overview']?.toString() ?? '',
+              status: data['status']?.toString(),
               startDate:
                   DateTime.tryParse(data['releaseDate']?.toString() ?? '') ??
                   DateTime.now(),
@@ -318,8 +319,9 @@ class ApiClient {
       title: data['seriesTitle']?.toString() ?? 'Unknown Series',
       posterUrl: data['posterUrl']?.toString() ?? '',
       description: data['overview']?.toString() ?? '',
+      status: data['status']?.toString(),
       startDate:
-          DateTime.tryParse(data['releaseYear']?.toString() ?? '') ??
+          DateTime.tryParse(data['releaseDate']?.toString() ?? '') ??
           DateTime.now(),
       seasons: [],
       isDropped: false,
@@ -393,6 +395,7 @@ class ApiClient {
       title: data['title']?.toString() ?? 'TBD',
       posterUrl: data['posterUrl']?.toString() ?? '',
       description: data['overview']?.toString() ?? 'No data',
+      status: data['status']?.toString(),
       startDate:
           DateTime.tryParse(data['releaseDate']?.toString() ?? '') ??
           DateTime.now(),

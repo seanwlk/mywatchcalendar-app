@@ -4,6 +4,7 @@ class Series {
   final String posterUrl;
   final String description;
   final DateTime startDate;
+  final String? status;
   final List<Season> seasons;
   bool isFollowed;
   bool isDropped;
@@ -15,6 +16,7 @@ class Series {
     required this.description,
     required this.startDate,
     required this.seasons,
+    this.status,
     this.isFollowed = false,
     this.isDropped = false,
   });

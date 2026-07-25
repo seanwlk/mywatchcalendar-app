@@ -171,6 +171,16 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
     }
   }
 
+  Color _getStatusColor(String status, BuildContext context) {
+    final s = status.toLowerCase();
+    if (s.contains('return') || s.contains('airing')) {
+      return Colors.green.withValues(alpha: 0.2);
+    } else if (s.contains('ended') || s.contains('cancel')) {
+      return Colors.red.withValues(alpha: 0.2);
+    }
+    return Theme.of(context).colorScheme.surfaceContainerHighest;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -262,8 +272,32 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Started airing ${_currentSeries.startDate.toLocal().toString().split(' ')[0]}',
+                      Row(
+                        children: [
+                          Text(
+                            'Started airing ${_currentSeries.startDate.toLocal().toString().split(' ')[0]}',
+                          ),
+                          const SizedBox(width: 12),
+                          if (_currentSeries.status != null &&
+                              _currentSeries.status!.isNotEmpty)
+                            Chip(
+                              label: Text(_currentSeries.status!),
+                              labelStyle: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              padding: EdgeInsets.zero,
+                              visualDensity: const VisualDensity(
+                                horizontal: 0,
+                                vertical: -4,
+                              ),
+                              side: BorderSide.none,
+                              backgroundColor: _getStatusColor(
+                                _currentSeries.status!,
+                                context,
+                              ),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 8),
                       Text(

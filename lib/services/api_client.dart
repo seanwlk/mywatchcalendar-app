@@ -80,6 +80,29 @@ class ApiClient {
     return null;
   }
 
+  Future<List<FollowedSeriesItem>?> fetchFollowedSeries({
+    int page = 1,
+    int pageSize = 50,
+  }) async {
+    try {
+      await _ensureAuth();
+      final uri = Uri.parse(
+        '${AuthService.instance.apiBaseUrl}/series/followed?page=$page&pageSize=$pageSize',
+      );
+      final response = await _client
+          .get(uri, headers: _authHeaders())
+          .timeout(_timeout);
+
+      if (response.statusCode == 200) {
+        final body = json.decode(response.body)['items'];
+        if (body is List) {
+          return body.map((item) => FollowedSeriesItem.fromJson(item)).toList();
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
   Future<List<Series>?> searchSeries({
     required String query,
     required int page,

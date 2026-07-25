@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'settings_screen.dart';
+import 'series_info_screen.dart';
+import 'followed_series_screen.dart';
 import '../services/api_client.dart';
 import '../models.dart';
 
@@ -19,22 +22,97 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   UserStats? _stats;
+  List<FollowedSeriesItem>? _followedSeries;
   bool _isLoading = true;
+
+  final ScrollController _carouselScrollController = ScrollController();
+  int _carouselPage = 1;
+  bool _isCarouselLoading = false;
+  bool _carouselHasMore = true;
+  static const int _carouselPageSize = 15;
 
   @override
   void initState() {
     super.initState();
-    _loadStats();
+    _carouselScrollController.addListener(_onCarouselScroll);
+    _loadProfileData();
   }
 
-  Future<void> _loadStats() async {
-    // Only show the full-screen spinner when there is nothing to display;
-    // a pull-to-refresh over existing stats keeps them visible.
-    if (_stats == null) setState(() => _isLoading = true);
+  @override
+  void dispose() {
+    _carouselScrollController.dispose();
+    super.dispose();
+  }
+
+  void _onCarouselScroll() {
+    if (!_isCarouselLoading &&
+        _carouselHasMore &&
+        _carouselScrollController.position.pixels >=
+            _carouselScrollController.position.maxScrollExtent - 120) {
+      _loadNextCarouselPage();
+    }
+  }
+
+  Future<void> _loadNextCarouselPage() async {
+    if (_isCarouselLoading || !_carouselHasMore) return;
+
+    setState(() => _isCarouselLoading = true);
+
     try {
-      final stats = await ApiClient.instance.fetchUserStats();
+      final nextItems = await ApiClient.instance.fetchFollowedSeries(
+        page: _carouselPage,
+        pageSize: _carouselPageSize,
+      );
+
       if (!mounted) return;
-      setState(() => _stats = stats);
+
+      setState(() {
+        if (nextItems != null && nextItems.isNotEmpty) {
+          _followedSeries?.addAll(nextItems);
+          _carouselPage++;
+
+          if (nextItems.length < _carouselPageSize) {
+            _carouselHasMore = false;
+          }
+        } else {
+          _carouselHasMore = false;
+        }
+      });
+    } finally {
+      if (mounted) setState(() => _isCarouselLoading = false);
+    }
+  }
+
+  Future<void> _loadProfileData() async {
+    if (_stats == null || _followedSeries == null) {
+      setState(() => _isLoading = true);
+    }
+
+    _carouselPage = 1;
+    _carouselHasMore = true;
+
+    try {
+      final results = await Future.wait([
+        ApiClient.instance.fetchUserStats(),
+        ApiClient.instance.fetchFollowedSeries(
+          page: _carouselPage,
+          pageSize: _carouselPageSize,
+        ),
+      ]);
+
+      if (!mounted) return;
+
+      setState(() {
+        _stats = results[0] as UserStats?;
+        _followedSeries = results[1] as List<FollowedSeriesItem>?;
+
+        if (_followedSeries != null) {
+          _carouselPage++;
+          if (_followedSeries!.length < _carouselPageSize) {
+            _carouselHasMore = false;
+          }
+        }
+      });
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -77,7 +155,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
-            onPressed: _isLoading ? null : _loadStats,
+            onPressed: _isLoading ? null : _loadProfileData,
           ),
           IconButton(
             icon: const Icon(Icons.settings),
@@ -94,9 +172,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _stats == null
+          : (_stats == null && _followedSeries == null)
           ? RefreshIndicator(
-              onRefresh: _loadStats,
+              onRefresh: _loadProfileData,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 children: [
@@ -109,7 +187,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const Text("Couldn't load your stats"),
                         const SizedBox(height: 12),
                         FilledButton.icon(
-                          onPressed: _loadStats,
+                          onPressed: _loadProfileData,
                           icon: const Icon(Icons.refresh),
                           label: const Text('Retry'),
                         ),
@@ -120,7 +198,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             )
           : RefreshIndicator(
-              onRefresh: _loadStats,
+              onRefresh: _loadProfileData,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Column(
@@ -128,6 +206,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     _buildProfileHeader(colorScheme),
                     const SizedBox(height: 32),
                     _buildStatsSection(colorScheme),
+                    const SizedBox(height: 32),
+                    _buildFollowedCarousel(colorScheme),
+                    const SizedBox(height: 32),
                   ],
                 ),
               ),
@@ -282,6 +363,104 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildFollowedCarousel(ColorScheme colorScheme) {
+    if (_followedSeries == null || _followedSeries!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const FollowedSeriesScreen()),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Followed Series',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    size: 18,
+                    color: colorScheme.primary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 180,
+          child: ListView.builder(
+            controller: _carouselScrollController,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            scrollDirection: Axis.horizontal,
+            itemCount: _followedSeries!.length + (_isCarouselLoading ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (index >= _followedSeries!.length) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+
+              final item = _followedSeries![index];
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: GestureDetector(
+                  onTap: () {
+                    final placeholderSeries = Series(
+                      id: item.id,
+                      title: item.title,
+                      posterUrl: item.posterUrl,
+                      description: '',
+                      startDate: DateTime.now(),
+                      seasons: [],
+                      isFollowed: true,
+                      isDropped: item.isDropped,
+                    );
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            SeriesInfoScreen(series: placeholderSeries),
+                      ),
+                    ).then((_) => _loadProfileData());
+                  },
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: CachedNetworkImage(
+                      imageUrl: item.posterUrl,
+                      width: 120,
+                      fit: BoxFit.cover,
+                      errorWidget: (_, _, _) => Container(
+                        width: 120,
+                        color: colorScheme.surfaceContainerHighest,
+                        child: const Icon(Icons.broken_image),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

@@ -105,3 +105,39 @@ class AdminUser {
     );
   }
 }
+
+class FollowedSeriesProgress {
+  final int total;
+  final int watched;
+
+  FollowedSeriesProgress({required this.total, required this.watched});
+}
+
+class FollowedSeriesItem {
+  final String id;
+  final String title;
+  final String posterUrl;
+  final bool isDropped;
+  final FollowedSeriesProgress progress;
+
+  FollowedSeriesItem({
+    required this.id,
+    required this.title,
+    required this.posterUrl,
+    required this.isDropped,
+    required this.progress,
+  });
+
+  factory FollowedSeriesItem.fromJson(Map<String, dynamic> json) {
+    return FollowedSeriesItem(
+      id: json['id']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      posterUrl: json['posterUrl']?.toString() ?? '',
+      isDropped: json['isDropped'],
+      progress: FollowedSeriesProgress(
+        total: json['progress']?['total'] ?? 0,
+        watched: json['progress']?['watched'] ?? 0,
+      ),
+    );
+  }
+}

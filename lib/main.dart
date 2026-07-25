@@ -80,6 +80,38 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
+  Future<void> _onRegister(
+    String username,
+    String password,
+    String siteUrl,
+  ) async {
+    final errorMessage = await AuthService.instance.register(
+      siteUrl,
+      username,
+      password,
+    );
+
+    if (errorMessage != null) {
+      if (!mounted) return;
+      _scaffoldMessengerKey.currentState?.showSnackBar(
+        SnackBar(
+          content: Text(
+            errorMessage,
+            style: const TextStyle(color: Colors.white),
+          ),
+          backgroundColor: Colors.red.shade800,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _signedIn = true;
+      _username = username;
+      _siteUrl = siteUrl;
+    });
+  }
+
   Future<void> _handleLogout() async {
     await AuthService.instance.logout(clearSiteUrl: false);
     setState(() {
@@ -255,7 +287,11 @@ class _MyAppState extends State<MyApp> {
           home: _initialized
               ? (_signedIn
                     ? HomeScreen(username: _username, onLogout: _handleLogout)
-                    : LoginScreen(onLogin: _onLogin, initialSiteUrl: _siteUrl))
+                    : LoginScreen(
+                        onLogin: _onLogin,
+                        onRegister: _onRegister,
+                        initialSiteUrl: _siteUrl,
+                      ))
               : const Scaffold(
                   body: Center(child: CircularProgressIndicator()),
                 ),

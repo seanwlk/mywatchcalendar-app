@@ -76,6 +76,26 @@ class AuthService {
     return true;
   }
 
+  Future<String?> register(
+    String siteUrl,
+    String username,
+    String password,
+  ) async {
+    final normalizedUrl = _normalizeSiteUrl(siteUrl);
+    this.siteUrl = normalizedUrl;
+    this.username = username;
+
+    final errorMessage = await _remoteRegister(username, password);
+    if (errorMessage != null) return errorMessage;
+
+    await _saveCredentials();
+
+    SystemChannels.textInput.invokeMethod('TextInput.finishAutofillContext');
+
+    authStateNotifier.value = true;
+    return null;
+  }
+
   Future<bool> refreshTokens() async {
     if (refreshToken == null || !hasValidRefreshToken) {
       return false;
@@ -210,6 +230,50 @@ class AuthService {
       return false;
     } catch (_) {
       return false;
+    }
+  }
+
+  Future<String?> _remoteRegister(String username, String password) async {
+    if (siteUrl == null) return "Server URL is missing";
+
+    try {
+      final uri = Uri.parse('$siteUrl/api/auth/register');
+      final response = await _client
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'username': username, 'password': password}),
+          )
+          .timeout(_timeout);
+
+      if (response.statusCode == 201) {
+        final body = json.decode(response.body);
+        if (body is Map<String, dynamic> &&
+            body['accessToken'] != null &&
+            body['refreshToken'] != null) {
+          accessToken = body['accessToken'];
+          refreshToken = body['refreshToken'];
+          return null;
+        }
+        return "Invalid response from server";
+      }
+
+      try {
+        final body = json.decode(response.body);
+        if (body['message'] != null) {
+          if (body['message'] is List) {
+            return body['message'].first.toString();
+          }
+          return body['message'].toString();
+        }
+      } catch (_) {}
+
+      if (response.statusCode == 403) return "User registration is disabled.";
+      if (response.statusCode == 400) return "Username already taken.";
+
+      return "Registration failed with status: ${response.statusCode}";
+    } catch (_) {
+      return "Could not connect to the server.";
     }
   }
 

@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 class LoginScreen extends StatefulWidget {
   final Future<void> Function(String username, String password, String siteUrl)
   onLogin;
+  final Future<void> Function(String username, String password, String siteUrl)
+  onRegister;
   final String? initialSiteUrl;
 
-  const LoginScreen({super.key, required this.onLogin, this.initialSiteUrl});
+  const LoginScreen({
+    super.key,
+    required this.onLogin,
+    required this.onRegister,
+    this.initialSiteUrl,
+  });
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -17,6 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _userController = TextEditingController();
   final _passController = TextEditingController();
   bool _loading = false;
+  bool _isRegistering = false;
 
   @override
   void initState() {
@@ -36,14 +45,28 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _loading = true);
-    await widget.onLogin(
-      _userController.text.trim(),
-      _passController.text,
-      endpoint,
-    );
-    if (mounted) {
-      setState(() => _loading = false);
+
+    try {
+      if (_isRegistering) {
+        await widget.onRegister(
+          _userController.text.trim(),
+          _passController.text,
+          endpoint,
+        );
+      } else {
+        TextInput.finishAutofillContext(shouldSave: true);
+        await widget.onLogin(
+          _userController.text.trim(),
+          _passController.text,
+          endpoint,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -77,46 +100,24 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(32, 64, 32, 32),
-                        child: AutofillGroup(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Text(
-                                'MyWatchCalendar',
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.5,
-                                ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _isRegistering ? 'Register' : 'MyWatchCalendar',
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
                               ),
-                              const SizedBox(height: 24),
-                              if (!kIsWeb) ...[
-                                TextField(
-                                  controller: _endpointController,
-                                  decoration: InputDecoration(
-                                    labelText: 'Server URL',
-                                    prefixIcon: const Icon(
-                                      Icons.cloud_outlined,
-                                    ),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    filled: true,
-                                    fillColor: Theme.of(
-                                      context,
-                                    ).colorScheme.surface,
-                                  ),
-                                  keyboardType: TextInputType.url,
-                                  autofillHints: const [AutofillHints.url],
-                                  textInputAction: TextInputAction.next,
-                                ),
-                                const SizedBox(height: 16),
-                              ],
+                            ),
+                            const SizedBox(height: 24),
+                            if (!kIsWeb) ...[
                               TextField(
-                                controller: _userController,
+                                controller: _endpointController,
                                 decoration: InputDecoration(
-                                  labelText: 'Username',
-                                  prefixIcon: const Icon(Icons.person_outline),
+                                  labelText: 'Server URL',
+                                  prefixIcon: const Icon(Icons.cloud_outlined),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
@@ -125,71 +126,118 @@ class _LoginScreenState extends State<LoginScreen> {
                                     context,
                                   ).colorScheme.surface,
                                 ),
-                                keyboardType: TextInputType.text,
-                                autofillHints: const [AutofillHints.username],
+                                keyboardType: TextInputType.url,
+                                autofillHints: const [AutofillHints.url],
                                 textInputAction: TextInputAction.next,
                               ),
                               const SizedBox(height: 16),
-                              TextField(
-                                controller: _passController,
-                                decoration: InputDecoration(
-                                  labelText: 'Password',
-                                  prefixIcon: const Icon(Icons.lock_outline),
-                                  border: OutlineInputBorder(
+                            ],
+                            AutofillGroup(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  TextField(
+                                    controller: _userController,
+                                    decoration: InputDecoration(
+                                      labelText: 'Username',
+                                      prefixIcon: const Icon(
+                                        Icons.person_outline,
+                                      ),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      filled: true,
+                                      fillColor: Theme.of(
+                                        context,
+                                      ).colorScheme.surface,
+                                    ),
+                                    keyboardType: TextInputType.text,
+                                    autofillHints: const [
+                                      AutofillHints.username,
+                                    ],
+                                    textInputAction: TextInputAction.next,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  TextField(
+                                    controller: _passController,
+                                    decoration: InputDecoration(
+                                      labelText: 'Password',
+                                      prefixIcon: const Icon(
+                                        Icons.lock_outline,
+                                      ),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      filled: true,
+                                      fillColor: Theme.of(
+                                        context,
+                                      ).colorScheme.surface,
+                                    ),
+                                    obscureText: true,
+                                    keyboardType: TextInputType.visiblePassword,
+                                    autofillHints: _isRegistering
+                                        ? const [AutofillHints.newPassword]
+                                        : const [AutofillHints.password],
+                                    textInputAction: TextInputAction.done,
+                                    onSubmitted: (_) =>
+                                        _loading ? null : _submit(),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 32),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 52,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Theme.of(
+                                    context,
+                                  ).colorScheme.primary,
+                                  foregroundColor: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimary,
+                                  shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
-                                  filled: true,
-                                  fillColor: Theme.of(
-                                    context,
-                                  ).colorScheme.surface,
+                                  elevation: 4,
                                 ),
-                                obscureText: true,
-                                keyboardType: TextInputType.visiblePassword,
-                                autofillHints: const [AutofillHints.password],
-                                textInputAction: TextInputAction.done,
-                                onSubmitted: (_) => _loading ? null : _submit(),
-                              ),
-                              const SizedBox(height: 32),
-                              SizedBox(
-                                width: double.infinity,
-                                height: 52,
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
-                                    foregroundColor: Theme.of(
-                                      context,
-                                    ).colorScheme.onPrimary,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    elevation: 4,
-                                  ),
-                                  onPressed: _loading ? null : _submit,
-                                  child: _loading
-                                      ? SizedBox(
-                                          width: 24,
-                                          height: 24,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2.5,
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.onPrimary,
-                                          ),
-                                        )
-                                      : const Text(
-                                          'Sign In',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            letterSpacing: 1.0,
-                                          ),
+                                onPressed: _loading ? null : _submit,
+                                child: _loading
+                                    ? SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.5,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onPrimary,
                                         ),
-                                ),
+                                      )
+                                    : Text(
+                                        _isRegistering ? 'Register' : 'Sign In',
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 1.0,
+                                        ),
+                                      ),
                               ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(height: 16),
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  _isRegistering = !_isRegistering;
+                                });
+                              },
+                              child: Text(
+                                _isRegistering
+                                    ? 'Already have an account? Sign In'
+                                    : 'Register',
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),

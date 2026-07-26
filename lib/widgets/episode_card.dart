@@ -9,6 +9,7 @@ class EpisodeCard extends StatelessWidget {
   final VoidCallback onSeriesTap;
   final VoidCallback onEpisodeTap;
   final VoidCallback onMarkWatched;
+  final bool showAirTime;
 
   const EpisodeCard({
     super.key,
@@ -18,7 +19,49 @@ class EpisodeCard extends StatelessWidget {
     required this.onSeriesTap,
     required this.onEpisodeTap,
     required this.onMarkWatched,
+    this.showAirTime = false,
   });
+
+  String _formatLocal24hTime(DateTime date) {
+    final localDate = date.toLocal();
+    final hour = localDate.hour.toString().padLeft(2, '0');
+    final minute = localDate.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  Widget _buildTimeChip(BuildContext context) {
+    final timeString = _formatLocal24hTime(episode.airDate);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.access_time_rounded,
+            size: 12,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            timeString,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildTrailingAction(BuildContext context) {
     if (today != null) {
@@ -36,7 +79,7 @@ class EpisodeCard extends StatelessWidget {
       if (daysUntil > 0) {
         final labelText = daysUntil == 1 ? 'In 1 day' : 'In $daysUntil days';
         return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 4.0),
           child: Text(
             labelText,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -49,6 +92,7 @@ class EpisodeCard extends StatelessWidget {
     }
 
     return IconButton(
+      visualDensity: VisualDensity.compact,
       icon: Icon(
         episode.watched ? Icons.check_circle : Icons.check_circle_outline,
         color: episode.watched ? Colors.green : null,
@@ -66,6 +110,7 @@ class EpisodeCard extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(6),
@@ -130,7 +175,21 @@ class EpisodeCard extends StatelessWidget {
                   ],
                 ),
               ),
-              _buildTrailingAction(context),
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 96,
+                child: Stack(
+                  alignment: Alignment.topRight,
+                  children: [
+                    if (showAirTime) _buildTimeChip(context),
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [_buildTrailingAction(context)],
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),

@@ -214,6 +214,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           series: entry.key,
           episode: episode,
           today: today,
+          showAirTime: true,
           onSeriesTap: () async {
             await Navigator.push(
               context,

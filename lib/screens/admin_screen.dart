@@ -73,6 +73,35 @@ class _AdminScreenState extends State<AdminScreen> {
     }
   }
 
+  Future<void> _handleSyncUpcoming() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Sync Upcoming Series'),
+        content: const Text(
+          'This will trigger a sync for all the upcoming series in the database. Continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sync'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final success = await ApiClient.instance.syncUpcomingSeries();
+      _showSnackBar(
+        success ? 'Full sync job added to queue' : 'Failed to trigger sync',
+      );
+    }
+  }
+
   Future<void> _handleSyncSingle() async {
     final text = _tmdbController.text.trim();
     if (text.isEmpty) return;
@@ -319,6 +348,19 @@ class _AdminScreenState extends State<AdminScreen> {
                       ),
                       trailing: FilledButton(
                         onPressed: _handleSyncAll,
+                        child: const Text('Run'),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Card(
+                    child: ListTile(
+                      title: const Text('Sync Upcoming series'),
+                      subtitle: const Text(
+                        'Run metadata updates on upcoming series',
+                      ),
+                      trailing: FilledButton(
+                        onPressed: _handleSyncUpcoming,
                         child: const Text('Run'),
                       ),
                     ),

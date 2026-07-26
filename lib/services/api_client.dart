@@ -567,6 +567,20 @@ class ApiClient {
     return false;
   }
 
+  Future<bool> syncUpcomingSeries() async {
+    try {
+      await _ensureAuth();
+      final uri = Uri.parse(
+        '${AuthService.instance.apiBaseUrl}/admin/sync/upcoming',
+      );
+      final response = await _client
+          .post(uri, headers: _authHeaders())
+          .timeout(_timeout);
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {}
+    return false;
+  }
+
   Future<bool> syncSingleSeries(int tmdbId) async {
     try {
       await _ensureAuth();

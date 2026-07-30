@@ -152,7 +152,7 @@ class _FollowedSeriesScreenState extends State<FollowedSeriesScreen> {
                   width: 80,
                   height: 120,
                   fit: BoxFit.cover,
-                  errorWidget: (_, __, ___) => const SizedBox(
+                  errorWidget: (_, _, _) => const SizedBox(
                     width: 80,
                     height: 120,
                     child: Icon(Icons.broken_image),
@@ -213,7 +213,7 @@ class _FollowedSeriesScreenState extends State<FollowedSeriesScreen> {
                 imageUrl: item.posterUrl,
                 width: double.infinity,
                 fit: BoxFit.cover,
-                errorWidget: (_, __, ___) =>
+                errorWidget: (_, _, _) =>
                     const Center(child: Icon(Icons.broken_image)),
               ),
             ),

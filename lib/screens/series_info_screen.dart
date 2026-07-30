@@ -1,5 +1,10 @@
+import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:screenshot/screenshot.dart';
+import 'package:path_provider/path_provider.dart';
 import '../models.dart';
 import '../services/api_client.dart';
 import 'episode_info_screen.dart';
@@ -17,6 +22,7 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
   late Series _currentSeries;
   bool _isLoading = true;
   bool _isDataAvailable = true;
+  final ScreenshotController _screenshotController = ScreenshotController();
 
   @override
   void initState() {
@@ -31,10 +37,12 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
         _currentSeries.id,
       );
       if (enrichedSeries == null) {
-        setState(() {
-          _isLoading = false;
-          _isDataAvailable = false;
-        });
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _isDataAvailable = false;
+          });
+        }
         return;
       }
       if (mounted) {
@@ -50,6 +58,90 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
         });
       }
     }
+  }
+
+  Future<void> _generateAndShareCard() async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Sharing...')),
+    );
+
+    try {
+      await precacheImage(
+        CachedNetworkImageProvider(_currentSeries.posterUrl),
+        context,
+      );
+
+      final capturedImage = await _screenshotController.captureFromWidget(
+        _buildShareCardWidget(),
+        delay: const Duration(milliseconds: 100),
+      );
+
+      final directory = await getTemporaryDirectory();
+      final imagePath = '${directory.path}/share_series.png';
+      final imageFile = File(imagePath);
+      await imageFile.writeAsBytes(capturedImage);
+
+      await SharePlus.instance.share(
+        ShareParams(
+          text: _currentSeries.title,
+          files: [XFile(imagePath)],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to generate image')),
+      );
+    }
+  }
+
+  Widget _buildShareCardWidget() {
+    final totalEpisodes = _currentSeries.seasons.fold<int>(
+      0,
+      (sum, season) => sum + season.episodes.length,
+    );
+    return Container(
+      width: 400,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1E1E),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image(
+              image: CachedNetworkImageProvider(_currentSeries.posterUrl),
+              width: double.infinity,
+              height: 250,
+              fit: BoxFit.cover,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _currentSeries.title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Released: ${_currentSeries.startDate.toLocal().toString().split(' ')[0]}',
+            style: const TextStyle(color: Colors.grey, fontSize: 16),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Seasons: ${_currentSeries.seasons.length} | Episodes: $totalEpisodes',
+            style: const TextStyle(color: Colors.grey, fontSize: 16),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _toggleEpisodeWatched(Episode episode) async {
@@ -90,12 +182,15 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
       !currentlyFollowed,
     );
 
-    if (!success && mounted) {
-      // Rollback
+    if (!mounted) return;
+
+    if (!success) {
       setState(() {
         series.isFollowed = currentlyFollowed;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(
         SnackBar(
           content: Text(
             'Failed to ${currentlyFollowed ? 'unfollow' : 'follow'} series',
@@ -201,12 +296,59 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
           ),
           CustomScrollView(
             slivers: [
-              const SliverAppBar(
+              SliverAppBar(
                 expandedHeight: 200,
                 pinned: true,
                 backgroundColor: Colors.transparent,
                 elevation: 0,
-                leading: BackButton(color: Colors.white),
+                leading: const BackButton(color: Colors.white),
+                actions: [
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert, color: Colors.white),
+                    onSelected: (value) async {
+                      if (value == 'copy') {
+                        await Clipboard.setData(
+                          ClipboardData(text: _currentSeries.title),
+                        );
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Series name copied to clipboard'),
+                          ),
+                        );
+                      } else if (value == 'copy_tmdb') {
+                        // TODO: backend currently doesnt return TMDB ID. Future release.
+                      } else if (value == 'share') {
+                        // For now will create a share card, the idea is to have an URI intent 
+                        // Problem is properly handle the intent with web as well, maybe only named routing
+                        // could solve this by also adding web context paths
+                        await _generateAndShareCard();
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'copy',
+                        child: Row(
+                          children: [
+                            Icon(Icons.copy, size: 20),
+                            SizedBox(width: 12),
+                            Text('Copy name'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'share',
+                        child: Row(
+                          children: [
+                            Icon(Icons.share, size: 20),
+                            SizedBox(width: 12),
+                            Text('Share'),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
               SliverToBoxAdapter(
                 child: Padding(
@@ -315,7 +457,6 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
                   ),
                 ),
               ),
-
               if (_isLoading)
                 SliverFillRemaining(
                   hasScrollBody: false,
@@ -435,7 +576,6 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
                     );
                   }, childCount: _currentSeries.seasons.length),
                 ),
-
               SliverToBoxAdapter(
                 child: ColoredBox(
                   color: Theme.of(context).scaffoldBackgroundColor,

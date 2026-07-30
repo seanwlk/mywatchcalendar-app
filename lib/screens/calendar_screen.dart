@@ -163,17 +163,50 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final targetDate = DateTime(date.year, date.month, date.day);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final tomorrow = today.add(const Duration(days: 1));
-    final yesterday = today.add(const Duration(days: -1));
 
-    if (targetDate == today) {
+    final difference = targetDate.difference(today).inDays;
+
+    if (difference == 0) {
       return 'Today';
-    } else if (targetDate == tomorrow) {
+    } else if (difference == 1) {
       return 'Tomorrow';
-    } else if (targetDate == yesterday) {
+    } else if (difference == -1) {
       return 'Yesterday';
     } else {
-      return targetDate.toLocal().toString().split(' ')[0];
+      const weekdays = [
+        '',
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday',
+      ];
+      const months = [
+        '',
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
+
+      final weekday = weekdays[targetDate.weekday];
+      final month = months[targetDate.month];
+      final day = targetDate.day;
+
+      if (targetDate.year != today.year) {
+        return '$weekday, $day $month ${targetDate.year}';
+      }
+      return '$weekday, $day $month';
     }
   }
 

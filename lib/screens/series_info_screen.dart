@@ -276,6 +276,27 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
     return Theme.of(context).colorScheme.surfaceContainerHighest;
   }
 
+  Future<void> _sendToClipBoard(String? clipText, BuildContext context) async {
+    if (clipText == null || clipText.isEmpty) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No data available to copy'),
+      ),
+    );
+    return;
+  }
+    await Clipboard.setData(
+      ClipboardData(text: clipText),
+    );
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Copied to clipboard'),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -307,17 +328,11 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
                     icon: const Icon(Icons.more_vert, color: Colors.white),
                     onSelected: (value) async {
                       if (value == 'copy') {
-                        await Clipboard.setData(
-                          ClipboardData(text: _currentSeries.title),
-                        );
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Series name copied to clipboard'),
-                          ),
-                        );
+                        await _sendToClipBoard(_currentSeries.title, context);
                       } else if (value == 'copy_tmdb') {
-                        // TODO: backend currently doesnt return TMDB ID. Future release.
+                        await _sendToClipBoard(_currentSeries.externalIds?.tmdb, context);
+                      } else if (value == 'copy_imdb') {
+                        await _sendToClipBoard(_currentSeries.externalIds?.imdb, context);
                       } else if (value == 'share') {
                         // For now will create a share card, the idea is to have an URI intent 
                         // Problem is properly handle the intent with web as well, maybe only named routing
@@ -333,6 +348,26 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
                             Icon(Icons.copy, size: 20),
                             SizedBox(width: 12),
                             Text('Copy name'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'copy_tmdb',
+                        child: Row(
+                          children: [
+                            Icon(Icons.copy, size: 20),
+                            SizedBox(width: 12),
+                            Text('Copy TMDB ID'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'copy_imdb',
+                        child: Row(
+                          children: [
+                            Icon(Icons.copy, size: 20),
+                            SizedBox(width: 12),
+                            Text('Copy IMDb ID'),
                           ],
                         ),
                       ),

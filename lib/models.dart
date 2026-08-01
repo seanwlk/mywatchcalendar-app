@@ -1,5 +1,6 @@
 class Series {
   final String id;
+  final ExternalIds? externalIds;
   final String title;
   final String posterUrl;
   final String description;
@@ -11,6 +12,7 @@ class Series {
 
   Series({
     required this.id,
+    this.externalIds,
     required this.title,
     required this.posterUrl,
     required this.description,
@@ -27,6 +29,18 @@ class Season {
   final List<Episode> episodes;
 
   Season({required this.number, required this.episodes});
+}
+
+class ExternalIds {
+  final String? tmdb;
+  final String? imdb;
+  final String? tvdb;
+
+  ExternalIds({
+    this.imdb = '',
+    this.tmdb = '',
+    this.tvdb = ''
+  });
 }
 
 class Episode {

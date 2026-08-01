@@ -415,6 +415,11 @@ class ApiClient {
     }
     return Series(
       id: data['id']?.toString() ?? 'unknown',
+      externalIds: ExternalIds(
+        tmdb: data['externalIds']['tmdb']?.toString() ?? '',
+        imdb: data['externalIds']['imdb']?.toString() ?? '',
+        tvdb: data['externalIds']['tvdb']?.toString() ?? '',
+      ),
       title: data['title']?.toString() ?? 'TBD',
       posterUrl: data['posterUrl']?.toString() ?? '',
       description: data['overview']?.toString() ?? 'No data',

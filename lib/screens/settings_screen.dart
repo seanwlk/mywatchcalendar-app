@@ -205,6 +205,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: ListView(
           children: [
             if (!kIsWeb) ...[
+              const SizedBox(height: 12),
               TextField(
                 controller: _endpointController,
                 decoration: const InputDecoration(

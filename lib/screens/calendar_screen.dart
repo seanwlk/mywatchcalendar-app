@@ -160,7 +160,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   String _formatDateLabel(DateTime date) {
-    final targetDate = DateTime(date.year, date.month, date.day);
+    final localDate = date.toLocal();
+    final targetDate = DateTime(localDate.year, localDate.month, localDate.day);
+    
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
@@ -344,15 +346,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         );
                       }
                       final entry = _pastItems[idx];
-                      final date = entry.value.airDate;
+                      final date = entry.value.airDate.toLocal();
                       bool showChip = false;
+                      
                       if (idx == _pastItems.length - 1) {
                         showChip = true;
                       } else {
-                        final prevDate = _pastItems[idx + 1].value.airDate;
+                        final prevDate = _pastItems[idx + 1].value.airDate.toLocal();
                         showChip =
                             date.day != prevDate.day ||
-                            date.month != prevDate.month;
+                            date.month != prevDate.month || 
+                            date.year != prevDate.year;
                       }
                       return _buildItem(entry, showChip, _pastItems, today);
                     }, childCount: _pastItems.length + (_loadingPast ? 1 : 0)),
@@ -375,16 +379,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         );
                       }
                       final entry = _futureItems[idx];
-                      final date = entry.value.airDate;
+                      final date = entry.value.airDate.toLocal();
 
                       bool showChip = false;
                       if (idx == 0) {
                         showChip = true;
                       } else {
-                        final prevDate = _futureItems[idx - 1].value.airDate;
+                        final prevDate = _futureItems[idx - 1].value.airDate.toLocal();
                         showChip =
                             date.day != prevDate.day ||
-                            date.month != prevDate.month;
+                            date.month != prevDate.month ||
+                            date.year != prevDate.year;
                       }
                       return _buildItem(entry, showChip, _futureItems, today);
                     },

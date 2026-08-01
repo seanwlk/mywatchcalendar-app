@@ -72,7 +72,7 @@ class EpisodeCard extends StatelessWidget {
         currentDate.day,
       );
 
-      final airDate = episode.airDate;
+      final airDate = episode.airDate.toLocal();
       final episodeDay = DateTime(airDate.year, airDate.month, airDate.day);
       final daysUntil = episodeDay.difference(normalizedToday).inDays;
 

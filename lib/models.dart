@@ -4,7 +4,7 @@ class Series {
   final String title;
   final String posterUrl;
   final String description;
-  final DateTime startDate;
+  final DateTime? releaseDate;
   final String? status;
   final List<Season> seasons;
   bool isFollowed;
@@ -16,7 +16,7 @@ class Series {
     required this.title,
     required this.posterUrl,
     required this.description,
-    required this.startDate,
+    required this.releaseDate,
     required this.seasons,
     this.status,
     this.isFollowed = false,
@@ -49,7 +49,7 @@ class Episode {
   final int number;
   final String title;
   final String imageUrl;
-  final DateTime airDate;
+  final DateTime? airDate;
   bool watched;
   final int episodesLeft;
   final String description;

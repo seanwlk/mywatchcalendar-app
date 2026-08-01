@@ -120,7 +120,7 @@ class _FollowedSeriesScreenState extends State<FollowedSeriesScreen> {
       title: item.title,
       posterUrl: item.posterUrl,
       description: '',
-      startDate: DateTime.now(),
+      releaseDate: DateTime.now(),
       seasons: [],
       isFollowed: true,
       isDropped: item.isDropped,

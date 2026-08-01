@@ -128,7 +128,7 @@ class _EpisodeInfoScreenState extends State<EpisodeInfoScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Air date ${widget.episode.airDate.toLocal().toString().split(' ')[0]}',
+                        'Air date ${widget.episode.airDate?.toLocal().toString().split(' ')[0] ?? 'TBD'}',
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),

@@ -46,7 +46,7 @@ Future<void> _write(List<MapEntry<Series, Episode>> items) async {
             'series_title': e.key.title,
             'episode_id': e.value.id,
             'episode_title': e.value.title,
-            'air_date': e.value.airDate.toIso8601String(),
+            'air_date': e.value.airDate?.toIso8601String() ?? '',
             'poster_url': e.key.posterUrl,
             'season_number': e.value.season,
             'episode_number': e.value.number,

@@ -131,7 +131,7 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Released: ${_currentSeries.startDate.toLocal().toString().split(' ')[0]}',
+            'Released: ${_currentSeries.releaseDate?.toLocal().toString().split(' ')[0] ?? 'TBD'}',
             style: const TextStyle(color: Colors.grey, fontSize: 16),
           ),
           const SizedBox(height: 4),
@@ -451,9 +451,7 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
                     children: [
                       Row(
                         children: [
-                          Text(
-                            'Started airing ${_currentSeries.startDate.toLocal().toString().split(' ')[0]}',
-                          ),
+                          Text('Started airing ${_currentSeries.releaseDate?.toLocal().toString().split(' ')[0] ?? 'TBD'}'),
                           const SizedBox(width: 12),
                           if (_currentSeries.status != null &&
                               _currentSeries.status!.isNotEmpty)

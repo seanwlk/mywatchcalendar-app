@@ -22,7 +22,8 @@ class EpisodeCard extends StatelessWidget {
     this.showAirTime = false,
   });
 
-  String _formatLocal24hTime(DateTime date) {
+  String _formatLocal24hTime(DateTime? date) {
+    if (date == null) return 'TBD';
     final localDate = date.toLocal();
     final hour = localDate.hour.toString().padLeft(2, '0');
     final minute = localDate.minute.toString().padLeft(2, '0');
@@ -64,7 +65,7 @@ class EpisodeCard extends StatelessWidget {
   }
 
   Widget _buildTrailingAction(BuildContext context) {
-    if (today != null) {
+    if (today != null && episode.airDate != null) {
       final currentDate = today ?? DateTime.now();
       final normalizedToday = DateTime(
         currentDate.year,
@@ -72,7 +73,7 @@ class EpisodeCard extends StatelessWidget {
         currentDate.day,
       );
 
-      final airDate = episode.airDate.toLocal();
+      final airDate = episode.airDate!.toLocal();
       final episodeDay = DateTime(airDate.year, airDate.month, airDate.day);
       final daysUntil = episodeDay.difference(normalizedToday).inDays;
 

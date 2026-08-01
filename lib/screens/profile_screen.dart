@@ -428,7 +428,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       title: item.title,
                       posterUrl: item.posterUrl,
                       description: '',
-                      startDate: DateTime.now(),
+                      releaseDate: null,
                       seasons: [],
                       isFollowed: true,
                       isDropped: item.isDropped,

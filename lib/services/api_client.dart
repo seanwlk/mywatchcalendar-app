@@ -127,9 +127,8 @@ class ApiClient {
               posterUrl: data['posterUrl']?.toString() ?? '',
               description: data['overview']?.toString() ?? '',
               status: data['status']?.toString(),
-              startDate:
-                  DateTime.tryParse(data['releaseDate']?.toString() ?? '') ??
-                  DateTime.now(),
+              releaseDate:
+                  DateTime.tryParse(data['releaseDate']?.toString() ?? ''),
               seasons: [],
               isFollowed: data['isFollowed'] ?? false,
             );
@@ -211,9 +210,8 @@ class ApiClient {
           imageUrl: data['latestEpisode']['posterUrl']?.toString() ?? '',
           airDate:
               DateTime.tryParse(
-                data['latestEpisode']['airDate']?.toString() ?? '',
-              ) ??
-              DateTime.now(),
+                data['latestEpisode']['airDate']?.toString() ?? ''
+              ),
           watched: data['watched'] == true,
           episodesLeft: data['latestEpisode']['episodesLeft'] is int
               ? data['latestEpisode']['episodesLeft']
@@ -260,8 +258,7 @@ class ApiClient {
           title: data['episode']['title']?.toString() ?? 'TBD',
           imageUrl: data['episode']['posterUrl']?.toString() ?? '',
           airDate:
-              DateTime.tryParse(data['episode']['airDate']?.toString() ?? '') ??
-              DateTime.now(),
+              DateTime.tryParse(data['episode']['airDate']?.toString() ?? ''),
           watched: data['watched'] == true,
           description: data['episode']['overview']?.toString() ?? 'No Data',
         );
@@ -343,9 +340,8 @@ class ApiClient {
       posterUrl: data['posterUrl']?.toString() ?? '',
       description: data['overview']?.toString() ?? '',
       status: data['status']?.toString(),
-      startDate:
-          DateTime.tryParse(data['releaseDate']?.toString() ?? '') ??
-          DateTime.now(),
+      releaseDate:
+          DateTime.tryParse(data['releaseDate']?.toString() ?? ''),
       seasons: [],
       isDropped: false,
       isFollowed: true,
@@ -371,9 +367,8 @@ class ApiClient {
       imageUrl: data['latestEpisode']['posterUrl']?.toString() ?? '',
       airDate:
           DateTime.tryParse(
-            data['latestEpisode']['airDate']?.toString() ?? '',
-          ) ??
-          DateTime.now(),
+            data['latestEpisode']['airDate']?.toString() ?? ''
+          ),
       watched: data['watched'] == true,
       episodesLeft: data['latestEpisode']['episodesLeft'] is int
           ? data['latestEpisode']['episodesLeft']
@@ -399,8 +394,7 @@ class ApiClient {
               number: epJson['episodeNumber'] ?? 0,
               season: epJson['seasonNumber'] ?? 0,
               airDate:
-                  DateTime.tryParse(epJson['airDate']?.toString() ?? '') ??
-                  DateTime.now(),
+                  DateTime.tryParse(epJson['airDate']?.toString() ?? ''),
               imageUrl: epJson['posterUrl']?.toString() ?? '',
               watched: epJson['watched'] ?? false,
               description: epJson['overview'] ?? 'No data',
@@ -424,9 +418,8 @@ class ApiClient {
       posterUrl: data['posterUrl']?.toString() ?? '',
       description: data['overview']?.toString() ?? 'No data',
       status: data['status']?.toString(),
-      startDate:
-          DateTime.tryParse(data['releaseDate']?.toString() ?? '') ??
-          DateTime.now(),
+      releaseDate:
+          DateTime.tryParse(data['releaseDate']?.toString() ?? ''),
       seasons: parsedSeasons,
       isFollowed: data['isFollowed'] ?? false,
       isDropped: data['isDropped'] ?? false,

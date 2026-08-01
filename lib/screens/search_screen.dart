@@ -200,7 +200,7 @@ class _SearchScreenState extends State<SearchScreen> {
                           ),
                         ),
                         title: Text(s.title),
-                        subtitle: Text(s.startDate.year.toString()),
+                        subtitle: Text(s.releaseDate?.year.toString() ?? 'TBD'),
                         trailing: IconButton(
                           icon: Icon(
                             s.isFollowed

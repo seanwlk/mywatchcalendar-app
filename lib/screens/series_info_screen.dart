@@ -175,6 +175,7 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
 
     setState(() {
       series.isFollowed = !currentlyFollowed;
+      widget.series.isFollowed = !currentlyFollowed;
     });
 
     final success = await ApiClient.instance.followSeries(
@@ -187,6 +188,7 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
     if (!success) {
       setState(() {
         series.isFollowed = currentlyFollowed;
+        widget.series.isFollowed = currentlyFollowed;
       });
       ScaffoldMessenger.of(
         context,

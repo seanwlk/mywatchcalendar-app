@@ -210,12 +210,18 @@ class _SearchScreenState extends State<SearchScreen> {
                           ),
                           onPressed: () => _toggleFollow(s),
                         ),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => SeriesInfoScreen(series: s),
-                          ),
-                        ),
+                        onTap: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => SeriesInfoScreen(series: s),
+                            ),
+                          );
+                          
+                          if (mounted) {
+                            setState(() {});
+                          }
+                        },
                       );
                     },
                   ),

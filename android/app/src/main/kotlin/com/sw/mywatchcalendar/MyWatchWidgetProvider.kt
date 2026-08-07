@@ -1,22 +1,21 @@
 package com.sw.mywatchcalendar
 
+import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.BitmapFactory
-import android.net.Uri  // Fixed missing import
+import android.net.Uri
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
 import es.antonborri.home_widget.HomeWidgetProvider
 import es.antonborri.home_widget.HomeWidgetPlugin
 import org.json.JSONArray
-import org.json.JSONObject
 import java.net.URL
 
 class MyWatchWidgetProvider : HomeWidgetProvider() {
     
-    // Fixed: Overriding the required onUpdate method from HomeWidgetProvider
     override fun onUpdate(
         context: Context, 
         appWidgetManager: AppWidgetManager, 
@@ -26,15 +25,25 @@ class MyWatchWidgetProvider : HomeWidgetProvider() {
         for (appWidgetId in appWidgetIds) {
             val views = RemoteViews(context.packageName, R.layout.widget_layout)
             
-            // Setting up the intent with the correct EXTRA to prevent caching
             val intent = Intent(context, MyWatchWidgetService::class.java).apply {
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
                 data = Uri.parse(toUri(Intent.URI_INTENT_SCHEME))
             }
             
             views.setRemoteAdapter(R.id.widget_list_view, intent)
+
+            val clickIntent = Intent(context, MainActivity::class.java).apply {
+                action = "es.antonborri.home_widget.action.LAUNCH"
+            }
             
-            // Apply the views and trigger the list refresh
+            val clickPendingIntent = PendingIntent.getActivity(
+                context,
+                0,
+                clickIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+            )
+            views.setPendingIntentTemplate(R.id.widget_list_view, clickPendingIntent)
+            
             appWidgetManager.updateAppWidget(appWidgetId, views)
             appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_list_view)
         }
@@ -68,6 +77,10 @@ class MyWatchWidgetFactory(private val context: Context) : RemoteViewsService.Re
         
         try {
             val episode = episodes.getJSONObject(position)
+            
+            val seriesId = episode.getString("series_id")
+            val episodeId = episode.getString("episode_id")
+            
             views.setTextViewText(R.id.item_series_title, episode.getString("series_title"))
             
             val season = episode.getInt("season_number").toString().padStart(2, '0')
@@ -88,8 +101,13 @@ class MyWatchWidgetFactory(private val context: Context) : RemoteViewsService.Re
                 val bmp = BitmapFactory.decodeStream(url.openConnection().getInputStream())
                 views.setImageViewBitmap(R.id.item_poster, bmp)
             }
+            
+            val fillInIntent = Intent().apply {
+                data = Uri.parse("mywatch://episode?seriesId=$seriesId&episodeId=$episodeId")
+            }
+            views.setOnClickFillInIntent(R.id.item_root, fillInIntent)
+            
         } catch (e: Exception) {
-            // Ignore single-item rendering fails
         }
 
         return views

@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:home_widget/home_widget.dart';
+
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/episode_info_screen.dart';
+
 import 'services/auth_service.dart';
 import 'services/settings_service.dart';
 import 'services/widget_updater.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -19,41 +25,80 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey =
       GlobalKey<ScaffoldMessengerState>();
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+
   bool _initialized = false;
   bool _signedIn = false;
-  String _username = '';
-  String? _siteUrl;
+  Uri? _pendingWidgetUri;
 
   @override
   void initState() {
     super.initState();
     _initializeAuth();
+
+    if (!kIsWeb) {
+      HomeWidget.initiallyLaunchedFromHomeWidget().then(_handleWidgetUri);
+      HomeWidget.widgetClicked.listen(_handleWidgetUri);
+    }
+  }
+
+  void _handleWidgetUri(Uri? uri) {
+    if (uri == null || uri.scheme != 'mywatch' || uri.host != 'episode') return;
+
+    if (!_initialized || !_signedIn) {
+      _pendingWidgetUri = uri;
+      return;
+    }
+
+    _navigateToEpisode(uri);
+  }
+
+  void _navigateToEpisode(Uri uri) {
+    final seriesId = uri.queryParameters['seriesId'];
+    final episodeId = uri.queryParameters['episodeId'];
+
+    if (seriesId != null && episodeId != null) {
+      _pendingWidgetUri = null;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _navigatorKey.currentState?.popUntil((route) => route.isFirst);
+        _navigatorKey.currentState?.push(
+          MaterialPageRoute(
+            builder: (_) => EpisodeInfoScreen(
+              seriesId: seriesId,
+              episodeId: episodeId,
+            ),
+          ),
+        );
+      });
+    }
   }
 
   Future<void> _initializeAuth() async {
     await AuthService.instance.init();
     await SettingsService.instance.init();
 
-    setState(() {
-      _initialized = true;
-      _signedIn = AuthService.instance.isSignedIn;
-      _username = AuthService.instance.username ?? '';
-      _siteUrl = AuthService.instance.siteUrl;
-    });
+    bool signedIn = AuthService.instance.isSignedIn;
 
-    if (_signedIn) {
+    if (signedIn) {
       final ok = await AuthService.instance.ensureAccessToken();
       if (!ok && mounted) {
-        setState(() {
-          _signedIn = false;
-          _siteUrl = AuthService.instance.siteUrl;
-        });
+        signedIn = false;
       }
     }
+
+    setState(() {
+      _initialized = true;
+      _signedIn = signedIn;
+    });
 
     await WidgetUpdater.initialize(
       intervalMinutes: SettingsService.instance.widgetIntervalMinutes,
     );
+
+    if (_signedIn && _pendingWidgetUri != null) {
+      _navigateToEpisode(_pendingWidgetUri!);
+    }
   }
 
   Future<void> _onLogin(
@@ -75,9 +120,11 @@ class _MyAppState extends State<MyApp> {
     }
     setState(() {
       _signedIn = true;
-      _username = username;
-      _siteUrl = siteUrl;
     });
+
+    if (_pendingWidgetUri != null) {
+      _navigateToEpisode(_pendingWidgetUri!);
+    }
   }
 
   Future<void> _onRegister(
@@ -107,17 +154,18 @@ class _MyAppState extends State<MyApp> {
 
     setState(() {
       _signedIn = true;
-      _username = username;
-      _siteUrl = siteUrl;
     });
+
+    if (_pendingWidgetUri != null) {
+      _navigateToEpisode(_pendingWidgetUri!);
+    }
   }
 
   Future<void> _handleLogout() async {
     await AuthService.instance.logout(clearSiteUrl: false);
     setState(() {
       _signedIn = false;
-      _username = '';
-      _siteUrl = AuthService.instance.siteUrl;
+      _pendingWidgetUri = null;
     });
   }
 
@@ -267,6 +315,7 @@ class _MyAppState extends State<MyApp> {
           debugShowCheckedModeBanner: false,
           title: 'MyWatchCalendar',
           theme: currentTheme,
+          navigatorKey: _navigatorKey,
           scaffoldMessengerKey: _scaffoldMessengerKey,
           builder: (context, child) {
             final screenWidth = MediaQuery.sizeOf(context).width;
@@ -285,13 +334,21 @@ class _MyAppState extends State<MyApp> {
             );
           },
           home: _initialized
-              ? (_signedIn
-                    ? HomeScreen(username: _username, onLogout: _handleLogout)
-                    : LoginScreen(
-                        onLogin: _onLogin,
-                        onRegister: _onRegister,
-                        initialSiteUrl: _siteUrl,
-                      ))
+              ? ValueListenableBuilder<bool>(
+                  valueListenable: AuthService.instance.authStateNotifier,
+                  builder: (context, isAuth, _) {
+                    return isAuth
+                        ? HomeScreen(
+                            username: AuthService.instance.username ?? '',
+                            onLogout: _handleLogout,
+                          )
+                        : LoginScreen(
+                            onLogin: _onLogin,
+                            onRegister: _onRegister,
+                            initialSiteUrl: AuthService.instance.siteUrl,
+                          );
+                  },
+                )
               : const Scaffold(
                   body: Center(child: CircularProgressIndicator()),
                 ),

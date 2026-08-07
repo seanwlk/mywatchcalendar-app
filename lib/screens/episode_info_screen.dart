@@ -4,34 +4,75 @@ import '../models.dart';
 import '../services/api_client.dart';
 
 class EpisodeInfoScreen extends StatefulWidget {
-  final Series series;
-  final Episode episode;
+  final Series? series;
+  final Episode? episode;
+  final String? seriesId;
+  final String? episodeId;
 
   const EpisodeInfoScreen({
     super.key,
-    required this.series,
-    required this.episode,
-  });
+    this.series,
+    this.episode,
+    this.seriesId,
+    this.episodeId,
+  }) : assert((series != null && episode != null) || (seriesId != null && episodeId != null));
 
   @override
   State<EpisodeInfoScreen> createState() => _EpisodeInfoScreenState();
 }
 
 class _EpisodeInfoScreenState extends State<EpisodeInfoScreen> {
-  late bool _isWatched;
+  Series? _series;
+  Episode? _episode;
+  bool _isWatched = false;
   bool _isLoading = false;
+  bool _isFetchingData = false;
 
   @override
   void initState() {
     super.initState();
-    _isWatched = widget.episode.watched;
+    _series = widget.series;
+    _episode = widget.episode;
+
+    if (_episode != null && _series != null) {
+      _isWatched = _episode!.watched;
+    } else {
+      _fetchEnrichedData();
+    }
+  }
+
+  Future<void> _fetchEnrichedData() async {
+    setState(() => _isFetchingData = true);
+    try {
+      final fetchedSeries =
+          await ApiClient.instance.fetchSeriesbyId(widget.seriesId!);
+      final fetchedEpisode =
+          await ApiClient.instance.getEpisode(widget.episodeId!);
+
+      if (mounted) {
+        setState(() {
+          _series = fetchedSeries;
+          _episode = fetchedEpisode;
+          _isWatched = _episode?.watched ?? false;
+          _isFetchingData = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isFetchingData = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to load episode data')),
+        );
+      }
+    }
   }
 
   Future<void> _toggleWatched() async {
+    if (_episode == null) return;
     setState(() => _isLoading = true);
 
     final success = await ApiClient.instance.markEpisodeWatched(
-      widget.episode.id,
+      _episode!.id,
       !_isWatched,
     );
 
@@ -49,6 +90,11 @@ class _EpisodeInfoScreenState extends State<EpisodeInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isFetchingData || _episode == null || _series == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     return Scaffold(
       body: Stack(
         children: [
@@ -58,7 +104,7 @@ class _EpisodeInfoScreenState extends State<EpisodeInfoScreen> {
             right: 0,
             height: 300,
             child: CachedNetworkImage(
-              imageUrl: widget.episode.imageUrl,
+              imageUrl: _episode!.imageUrl,
               fit: BoxFit.cover,
               memCacheWidth: 1080,
               errorWidget: (_, _, _) => const Icon(Icons.broken_image),
@@ -67,7 +113,6 @@ class _EpisodeInfoScreenState extends State<EpisodeInfoScreen> {
           CustomScrollView(
             slivers: [
               const SliverToBoxAdapter(child: SizedBox(height: 250)),
-
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -79,7 +124,7 @@ class _EpisodeInfoScreenState extends State<EpisodeInfoScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'S${widget.episode.season.toString().padLeft(2, '0')} E${widget.episode.number.toString().padLeft(2, '0')}',
+                            'S${_episode!.season.toString().padLeft(2, '0')} E${_episode!.number.toString().padLeft(2, '0')}',
                             style: Theme.of(context).textTheme.labelLarge
                                 ?.copyWith(
                                   color: Theme.of(context).colorScheme.primary,
@@ -88,7 +133,7 @@ class _EpisodeInfoScreenState extends State<EpisodeInfoScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            widget.episode.title,
+                            _episode!.title,
                             style: Theme.of(context).textTheme.headlineSmall,
                           ),
                           const SizedBox(height: 20),
@@ -128,7 +173,7 @@ class _EpisodeInfoScreenState extends State<EpisodeInfoScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Air date ${widget.episode.airDate?.toLocal().toString().split(' ')[0] ?? 'TBD'}',
+                        'Air date ${_episode!.airDate?.toLocal().toString().split(' ')[0] ?? 'TBD'}',
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
@@ -141,7 +186,7 @@ class _EpisodeInfoScreenState extends State<EpisodeInfoScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        widget.episode.description,
+                        _episode!.description,
                         style: Theme.of(
                           context,
                         ).textTheme.bodyLarge?.copyWith(height: 1.5),

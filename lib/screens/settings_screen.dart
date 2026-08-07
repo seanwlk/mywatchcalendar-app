@@ -208,8 +208,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 12),
               TextField(
                 controller: _endpointController,
+                autocorrect: false,
                 decoration: const InputDecoration(
-                  labelText: 'API Endpoint URL',
+                  labelText: 'Server URL',
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.url,
@@ -223,7 +224,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         width: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Save endpoint'),
+                    : const Text('Save Server URL'),
               ),
               const SizedBox(height: 24),
             ],

@@ -115,6 +115,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             if (!kIsWeb) ...[
                               TextField(
                                 controller: _endpointController,
+                                autocorrect: false,
                                 decoration: InputDecoration(
                                   labelText: 'Server URL',
                                   prefixIcon: const Icon(Icons.cloud_outlined),

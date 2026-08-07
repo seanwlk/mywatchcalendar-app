@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../services/auth_service.dart';
 import '../services/settings_service.dart';
 import '../services/widget_updater.dart';
@@ -21,6 +22,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   AppThemeChoice _choice = SettingsService.instance.themeChoice.value;
   bool _savingEndpoint = false;
   int _widgetInterval = SettingsService.instance.widgetIntervalMinutes;
+  String _appVersion = '';
 
   static const Map<int, String> _widgetIntervals = {
     15: 'Every 15 minutes',
@@ -39,6 +41,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
         SettingsService.instance.siteUrlOverride ??
         AuthService.instance.siteUrl ??
         '';
+        
+    _loadVersion();
+  }
+  
+  Future<void> _loadVersion() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    if (mounted) {
+      setState(() {
+        _appVersion = '${packageInfo.version} (${packageInfo.buildNumber})';
+      });
+    }
   }
 
   @override
@@ -326,6 +339,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               leading: const Icon(Icons.logout),
               onTap: _logout,
             ),
+            if (_appVersion.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              Center(
+                child: Text(
+                  'Version $_appVersion',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey,
+                      ),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
           ],
         ),
       ),

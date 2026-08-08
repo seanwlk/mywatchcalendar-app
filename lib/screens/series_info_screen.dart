@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models.dart';
 import '../services/api_client.dart';
 import 'episode_info_screen.dart';
@@ -280,14 +281,14 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
 
   Future<void> _sendToClipBoard(String? clipText, BuildContext context) async {
     if (clipText == null || clipText.isEmpty) {
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('No data available to copy'),
-      ),
-    );
-    return;
-  }
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No data available to copy'),
+        ),
+      );
+      return;
+    }
     await Clipboard.setData(
       ClipboardData(text: clipText),
     );
@@ -297,6 +298,25 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
         content: Text('Copied to clipboard'),
       ),
     );
+  }
+
+  Future<void> _openUrl(String url) async {
+    final uri = Uri.parse(url);
+    try {
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not open link')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open link')),
+        );
+      }
+    }
   }
 
   @override
@@ -331,33 +351,76 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
                     onSelected: (value) async {
                       if (value == 'copy') {
                         await _sendToClipBoard(_currentSeries.title, context);
-                      } else if (value == 'copy_tmdb') {
-                        await _sendToClipBoard(_currentSeries.externalIds?.tmdb, context);
-                      } else if (value == 'copy_imdb') {
-                        await _sendToClipBoard(_currentSeries.externalIds?.imdb, context);
                       } else if (value == 'share') {
-                        // For now will create a share card, the idea is to have an URI intent 
-                        // Problem is properly handle the intent with web as well, maybe only named routing
-                        // could solve this by also adding web context paths
                         await _generateAndShareCard();
+                      } else if (value == 'open_tmdb') {
+                        final tmdbId = _currentSeries.externalIds?.tmdb;
+                        if (tmdbId != null && tmdbId.toString().isNotEmpty) {
+                          await _openUrl('https://www.themoviedb.org/tv/$tmdbId');
+                        } else {
+                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('TMDB ID not available')));
+                        }
+                      } else if (value == 'open_imdb') {
+                        final imdbId = _currentSeries.externalIds?.imdb;
+                        if (imdbId != null && imdbId.toString().isNotEmpty) {
+                          await _openUrl('https://www.imdb.com/title/$imdbId/');
+                        } else {
+                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('IMDb ID not available')));
+                        }
+                      } else if (value == 'copy_tmdb') {
+                        await _sendToClipBoard(_currentSeries.externalIds?.tmdb?.toString(), context);
+                      } else if (value == 'copy_imdb') {
+                        await _sendToClipBoard(_currentSeries.externalIds?.imdb?.toString(), context);
                       }
                     },
                     itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'share',
+                        child: Row(
+                          children: [
+                            Icon(Icons.share, size: 20),
+                            SizedBox(width: 12),
+                            Text('Share'),
+                          ],
+                        ),
+                      ),
                       const PopupMenuItem(
                         value: 'copy',
                         child: Row(
                           children: [
                             Icon(Icons.copy, size: 20),
                             SizedBox(width: 12),
-                            Text('Copy name'),
+                            Text('Copy title'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuDivider(),
+                      const PopupMenuItem(
+                        value: 'open_tmdb',
+                        child: Row(
+                          children: [
+                            Icon(Icons.open_in_browser, size: 20),
+                            SizedBox(width: 12),
+                            Text('Open in TMDB'),
                           ],
                         ),
                       ),
                       const PopupMenuItem(
+                        value: 'open_imdb',
+                        child: Row(
+                          children: [
+                            Icon(Icons.open_in_browser, size: 20),
+                            SizedBox(width: 12),
+                            Text('Open in IMDb'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuDivider(),
+                      const PopupMenuItem(
                         value: 'copy_tmdb',
                         child: Row(
                           children: [
-                            Icon(Icons.copy, size: 20),
+                            Icon(Icons.numbers, size: 20),
                             SizedBox(width: 12),
                             Text('Copy TMDB ID'),
                           ],
@@ -367,19 +430,9 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
                         value: 'copy_imdb',
                         child: Row(
                           children: [
-                            Icon(Icons.copy, size: 20),
+                            Icon(Icons.numbers, size: 20),
                             SizedBox(width: 12),
                             Text('Copy IMDb ID'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'share',
-                        child: Row(
-                          children: [
-                            Icon(Icons.share, size: 20),
-                            SizedBox(width: 12),
-                            Text('Share'),
                           ],
                         ),
                       ),

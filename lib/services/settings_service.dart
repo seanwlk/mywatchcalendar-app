@@ -8,6 +8,7 @@ class SettingsService {
   static const _keySiteUrlOverride = 'site_url_override';
   static const _keyWidgetEnabled = 'widget_enabled';
   static const _keyWidgetInterval = 'widget_interval_minutes';
+  static const _keyFollowedGridView = 'followed_is_grid_view';
 
   static final SettingsService instance = SettingsService._internal();
 
@@ -17,6 +18,7 @@ class SettingsService {
   String? siteUrlOverride;
   bool widgetEnabled = false;
   int widgetIntervalMinutes = 60; // default 1 hour
+  bool followedIsGridView = false;
 
   SettingsService._internal();
 
@@ -30,6 +32,7 @@ class SettingsService {
     siteUrlOverride = _prefs?.getString(_keySiteUrlOverride);
     widgetEnabled = _prefs?.getBool(_keyWidgetEnabled) ?? false;
     widgetIntervalMinutes = _prefs?.getInt(_keyWidgetInterval) ?? 60;
+    followedIsGridView = _prefs?.getBool(_keyFollowedGridView) ?? false;
   }
 
   Future<bool> updateTheme(AppThemeChoice choice) async {
@@ -55,5 +58,10 @@ class SettingsService {
     }
     return _prefs?.setString(_keySiteUrlOverride, siteUrlOverride!) ??
         Future.value(false);
+  }
+
+  Future<bool> updateFollowedGridView(bool isGrid) async {
+    followedIsGridView = isGrid;
+    return _prefs?.setBool(_keyFollowedGridView, isGrid) ?? Future.value(false);
   }
 }

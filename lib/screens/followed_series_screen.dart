@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'series_info_screen.dart';
 import '../models.dart';
 import '../services/api_client.dart';
+import '../services/settings_service.dart';
 
 class FollowedSeriesScreen extends StatefulWidget {
   const FollowedSeriesScreen({super.key});
@@ -26,6 +27,7 @@ class _FollowedSeriesScreenState extends State<FollowedSeriesScreen> {
   @override
   void initState() {
     super.initState();
+    _isGridView = SettingsService.instance.followedIsGridView;
     _scrollController.addListener(_onScroll);
     _loadNextPage();
   }
@@ -288,7 +290,6 @@ class _FollowedSeriesScreenState extends State<FollowedSeriesScreen> {
             ),
           ),
 
-        // Render the loading indicator safely at the bottom of either view
         if (_loading && _items.isNotEmpty)
           const SliverToBoxAdapter(
             child: Padding(
@@ -313,6 +314,7 @@ class _FollowedSeriesScreenState extends State<FollowedSeriesScreen> {
               setState(() {
                 _isGridView = !_isGridView;
               });
+              SettingsService.instance.updateFollowedGridView(_isGridView);
             },
           ),
           IconButton(

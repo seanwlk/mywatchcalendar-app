@@ -9,6 +9,9 @@ class SettingsService {
   static const _keyWidgetEnabled = 'widget_enabled';
   static const _keyWidgetInterval = 'widget_interval_minutes';
   static const _keyFollowedGridView = 'followed_is_grid_view';
+  static const _keyGraphPeriod = 'graph_period';
+  static const _keyGraphMetric = 'graph_metric';
+  static const _keyGraphReverse = 'graph_reverse';
 
   static final SettingsService instance = SettingsService._internal();
 
@@ -18,7 +21,10 @@ class SettingsService {
   String? siteUrlOverride;
   bool widgetEnabled = false;
   int widgetIntervalMinutes = 60; // default 1 hour
-  bool followedIsGridView = false;
+  bool followedIsGridView = true;
+  String graphPeriod = 'day';
+  String graphMetric = 'episodes';
+  bool graphReverse = true;
 
   SettingsService._internal();
 
@@ -32,7 +38,10 @@ class SettingsService {
     siteUrlOverride = _prefs?.getString(_keySiteUrlOverride);
     widgetEnabled = _prefs?.getBool(_keyWidgetEnabled) ?? false;
     widgetIntervalMinutes = _prefs?.getInt(_keyWidgetInterval) ?? 60;
-    followedIsGridView = _prefs?.getBool(_keyFollowedGridView) ?? false;
+    followedIsGridView = _prefs?.getBool(_keyFollowedGridView) ?? true;
+    graphPeriod = _prefs?.getString(_keyGraphPeriod) ?? 'day';
+    graphMetric = _prefs?.getString(_keyGraphMetric) ?? 'episodes';
+    graphReverse = _prefs?.getBool(_keyGraphReverse) ?? true;
   }
 
   Future<bool> updateTheme(AppThemeChoice choice) async {
@@ -63,5 +72,20 @@ class SettingsService {
   Future<bool> updateFollowedGridView(bool isGrid) async {
     followedIsGridView = isGrid;
     return _prefs?.setBool(_keyFollowedGridView, isGrid) ?? Future.value(false);
+  }
+
+  Future<bool> updateGraphPeriod(String period) async {
+    graphPeriod = period;
+    return _prefs?.setString(_keyGraphPeriod, period) ?? Future.value(false);
+  }
+
+  Future<bool> updateGraphMetric(String metric) async {
+    graphMetric = metric;
+    return _prefs?.setString(_keyGraphMetric, metric) ?? Future.value(false);
+  }
+
+  Future<bool> updateGraphReverse(bool reverse) async {
+    graphReverse = reverse;
+    return _prefs?.setBool(_keyGraphReverse, reverse) ?? Future.value(false);
   }
 }

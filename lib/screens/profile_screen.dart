@@ -6,6 +6,7 @@ import 'settings_screen.dart';
 import 'series_info_screen.dart';
 import 'followed_series_screen.dart';
 import '../services/api_client.dart';
+import '../services/settings_service.dart';
 import '../models.dart';
 
 class GraphBarData {
@@ -44,9 +45,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isCarouselLoading = false;
   bool _carouselHasMore = true;
   static const int _carouselPageSize = 15;
-
-  String _graphPeriod = 'day'; 
-  String _graphMetric = 'episodes'; 
+  late String _graphPeriod; 
+  late String _graphMetric; 
+  late bool _graphReverse;
   
   final List<GraphBarData> _graphData = [];
   bool _isGraphLoading = false;
@@ -75,6 +76,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _graphPeriod = SettingsService.instance.graphPeriod;
+    _graphMetric = SettingsService.instance.graphMetric;
+    _graphReverse = SettingsService.instance.graphReverse;
+
     _carouselScrollController.addListener(_onCarouselScroll);
     _graphScrollController.addListener(_onGraphScroll);
     _loadProfileData();
@@ -683,9 +688,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Watch History',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Watch History',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              IconButton(
+                icon: const Icon(Icons.swap_horiz),
+                color: colorScheme.primary,
+                tooltip: 'Toggle Graph Direction',
+                onPressed: () {
+                  setState(() {
+                    _graphReverse = !_graphReverse;
+                  });
+                  SettingsService.instance.updateGraphReverse(_graphReverse);
+                },
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           Row(
@@ -710,6 +731,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       _graphPeriod = newSelection.first;
                       _loadGraphData(reset: true);
                     });
+                    SettingsService.instance.updateGraphPeriod(_graphPeriod);
                   },
                 ),
               ),
@@ -729,6 +751,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   selected: {_graphMetric},
                   onSelectionChanged: (Set<String> newSelection) {
                     setState(() => _graphMetric = newSelection.first);
+                    SettingsService.instance.updateGraphMetric(_graphMetric);
                   },
                 ),
               ),
@@ -748,7 +771,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: ListView.builder(
                 controller: _graphScrollController,
                 scrollDirection: Axis.horizontal,
-                reverse: false, 
+                reverse: _graphReverse, 
                 itemCount: _graphData.length + (_isGraphLoading ? 1 : 0),
                 itemBuilder: (context, index) {
                   if (index == _graphData.length) {
@@ -814,27 +837,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   if (_graphPeriod != 'year') {
                     bool yearChanged = index == 0 || _graphData[index].start.year != _graphData[index - 1].start.year;
                     if (yearChanged) {
+                      final divider = Container(
+                        margin: EdgeInsets.only(
+                          bottom: 6, 
+                          left: _graphReverse ? 4 : 8, 
+                          right: _graphReverse ? 8 : 4
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '${bar.start.year}', 
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      );
                       return Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Container(
-                            margin: const EdgeInsets.only(bottom: 6, left: 8, right: 4),
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              '${bar.start.year}', 
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ),
-                          barWidget,
-                        ],
+                        children: _graphReverse 
+                            ? [barWidget, divider] 
+                            : [divider, barWidget],
                       );
                     }
                   }

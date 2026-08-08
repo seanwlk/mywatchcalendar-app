@@ -592,4 +592,23 @@ class ApiClient {
     } catch (_) {}
     return false;
   }
+  
+  Future<WatchHistoryResponse?> fetchWatchHistory({
+    required DateTime start, 
+    required DateTime end
+  }) async {
+    try {
+      await _ensureAuth();
+      final uri = Uri.parse(
+        '${AuthService.instance.apiBaseUrl}/user/history?start=${start.toUtc().toIso8601String()}&end=${end.toUtc().toIso8601String()}',
+      );
+      final response = await _client
+          .get(uri, headers: _authHeaders())
+          .timeout(_timeout);
+      if (response.statusCode == 200) {
+        return WatchHistoryResponse.fromJson(json.decode(response.body));
+      }
+    } catch (_) {}
+    return null;
+  }
 }

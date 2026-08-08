@@ -155,3 +155,40 @@ class FollowedSeriesItem {
     );
   }
 }
+
+class WatchHistoryRecord {
+  final DateTime date;
+  final int runtime;
+
+  WatchHistoryRecord({
+    required this.date,
+    required this.runtime,
+  });
+
+  factory WatchHistoryRecord.fromJson(Map<String, dynamic> json) {
+    return WatchHistoryRecord(
+      date: DateTime.parse(json['date']).toLocal(),
+      runtime: json['runtime'] ?? 0,
+    );
+  }
+}
+
+class WatchHistoryResponse {
+  final bool hasMore;
+  final List<WatchHistoryRecord> records;
+
+  WatchHistoryResponse({
+    required this.hasMore,
+    required this.records,
+  });
+
+  factory WatchHistoryResponse.fromJson(Map<String, dynamic> json) {
+    return WatchHistoryResponse(
+      hasMore: json['hasMore'] ?? false,
+      records: (json['records'] as List?)
+              ?.map((e) => WatchHistoryRecord.fromJson(e))
+              .toList() ??
+          [],
+    );
+  }
+}

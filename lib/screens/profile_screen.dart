@@ -55,24 +55,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   DateTime? _currentGraphEndDate;
   final ScrollController _graphScrollController = ScrollController();
 
-  static const List<String> _months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-  ];
-
-  static const List<String> _fullMonths = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
-
-  static const List<String> _weekdays = [
-    '', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
-  ];
-
-  static const List<String> _fullWeekdays = [
-    '', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -136,14 +118,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         String label;
         if (_graphPeriod == 'day') {
            binStart = DateTime(currentBinEnd.year, currentBinEnd.month, currentBinEnd.day);
-           label = '${_months[binStart.month - 1]} ${binStart.day}';
+           label = '${DateConstants.monthsShort[binStart.month]} ${binStart.day}';
         } else if (_graphPeriod == 'week') {
            int daysToSubtract = currentBinEnd.weekday - 1;
            binStart = DateTime(currentBinEnd.year, currentBinEnd.month, currentBinEnd.day - daysToSubtract);
-           label = '${_months[binStart.month - 1]} ${binStart.day}';
+           label = '${DateConstants.monthsShort[binStart.month]} ${binStart.day}';
         } else if (_graphPeriod == 'month') {
            binStart = DateTime(currentBinEnd.year, currentBinEnd.month, 1);
-           label = _months[binStart.month - 1]; 
+           label = DateConstants.monthsShort[binStart.month]; 
         } else { 
            binStart = DateTime(currentBinEnd.year, 1, 1);
            label = '${binStart.year}';
@@ -307,14 +289,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_graphPeriod == 'year') {
       modalTitle = '${bar.start.year}';
     } else if (_graphPeriod == 'month') {
-      modalTitle = '${_fullMonths[bar.start.month - 1]} ${bar.start.year}';
+      modalTitle = '${DateConstants.monthsFull[bar.start.month]} ${bar.start.year}';
     } else if (_graphPeriod == 'week') {
       String firstDay = bar.start.day.toString().padLeft(2, '0');
       String lastDay = bar.end.day.toString().padLeft(2, '0');
-      modalTitle = '$firstDay-$lastDay ${_months[bar.end.month - 1]} ${bar.end.year}';
+      modalTitle = '$firstDay-$lastDay ${DateConstants.monthsShort[bar.end.month]} ${bar.end.year}';
     } else if (_graphPeriod == 'day') {
       String padDay = bar.start.day.toString().padLeft(2, '0');
-      modalTitle = '$padDay ${_fullWeekdays[bar.start.weekday]} - ${_months[bar.start.month - 1]} ${bar.start.year}';
+      modalTitle = '$padDay ${DateConstants.weekdaysFull[bar.start.weekday]} - ${DateConstants.monthsShort[bar.start.month]} ${bar.start.year}';
     }
 
     Map<String, Map<String, dynamic>> groupedData = {};
@@ -325,11 +307,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (_graphPeriod == 'year') {
         groupKey = r.date.month.toString();
-        displayLabel = _fullMonths[r.date.month - 1];
+        displayLabel = DateConstants.monthsFull[r.date.month];
       } else if (_graphPeriod == 'month' || _graphPeriod == 'week') {
         groupKey = r.date.day.toString();
         String dayNum = r.date.day.toString().padLeft(2, '0');
-        String dayName = _weekdays[r.date.weekday];
+        String dayName = DateConstants.weekdaysShort[r.date.weekday];
         displayLabel = '$dayNum $dayName';
       } else if (_graphPeriod == 'day') {
         groupKey = 'Total';

@@ -176,34 +176,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     } else if (difference == -1) {
       return 'Yesterday';
     } else {
-      const weekdays = [
-        '',
-        'Monday',
-        'Tuesday',
-        'Wednesday',
-        'Thursday',
-        'Friday',
-        'Saturday',
-        'Sunday',
-      ];
-      const months = [
-        '',
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec',
-      ];
-
-      final weekday = weekdays[targetDate.weekday];
-      final month = months[targetDate.month];
+      final weekday = DateConstants.weekdaysFull[targetDate.weekday];
+      final month = DateConstants.monthsShort[targetDate.month];
       final day = targetDate.day;
 
       if (targetDate.year != today.year) {

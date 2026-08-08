@@ -22,6 +22,26 @@ class Series {
     this.isFollowed = false,
     this.isDropped = false,
   });
+
+  factory Series.fromJson(Map<String, dynamic> json) {
+    return Series(
+      id: json['id']?.toString() ?? 'unknown',
+      externalIds: json['externalIds'] != null 
+          ? ExternalIds.fromJson(json['externalIds']) 
+          : null,
+      title: json['title']?.toString() ?? 'TBD',
+      posterUrl: json['posterUrl']?.toString() ?? '',
+      description: json['overview']?.toString() ?? 'No data',
+      status: json['status']?.toString(),
+      releaseDate: DateTime.tryParse(json['releaseDate']?.toString() ?? ''),
+      seasons: (json['seasons'] as List?)
+              ?.map((s) => Season.fromJson(s as Map<String, dynamic>))
+              .toList() ??
+          [],
+      isFollowed: json['isFollowed'] ?? false,
+      isDropped: json['isDropped'] ?? false,
+    );
+  }
 }
 
 class Season {
@@ -29,6 +49,16 @@ class Season {
   final List<Episode> episodes;
 
   Season({required this.number, required this.episodes});
+
+  factory Season.fromJson(Map<String, dynamic> json) {
+    return Season(
+      number: json['number'] ?? 0,
+      episodes: (json['episodes'] as List?)
+              ?.map((e) => Episode.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+    );
+  }
 }
 
 class ExternalIds {
@@ -41,6 +71,14 @@ class ExternalIds {
     this.tmdb = '',
     this.tvdb = ''
   });
+
+  factory ExternalIds.fromJson(Map<String, dynamic> json) {
+    return ExternalIds(
+      tmdb: json['tmdb']?.toString() ?? '',
+      imdb: json['imdb']?.toString() ?? '',
+      tvdb: json['tvdb']?.toString() ?? '',
+    );
+  }
 }
 
 class Episode {
@@ -65,6 +103,26 @@ class Episode {
     this.episodesLeft = 0,
     this.description = '',
   });
+
+  factory Episode.fromJson(Map<String, dynamic> json) {
+    return Episode(
+      id: json['id']?.toString() ?? 'unknown',
+      season: json['seasonNumber'] is int
+          ? json['seasonNumber']
+          : int.tryParse(json['seasonNumber']?.toString() ?? '1') ?? 1,
+      number: json['episodeNumber'] is int
+          ? json['episodeNumber']
+          : int.tryParse(json['episodeNumber']?.toString() ?? '1') ?? 1,
+      title: json['title']?.toString() ?? 'TBD',
+      imageUrl: json['posterUrl']?.toString() ?? '',
+      airDate: DateTime.tryParse(json['airDate']?.toString() ?? ''),
+      watched: json['watched'] == true,
+      episodesLeft: json['episodesLeft'] is int
+          ? json['episodesLeft']
+          : int.tryParse(json['episodesLeft']?.toString() ?? '0') ?? 0,
+      description: json['overview']?.toString() ?? 'No data',
+    );
+  }
 }
 
 class UserStats {

@@ -121,13 +121,19 @@ class AuthService {
   }
 
   Future<bool> _refreshAndPersist() async {
-    final refreshed = await refreshTokens();
-    if (!refreshed) {
-      await logout(clearSiteUrl: false);
-      return false;
+    try {
+      final refreshed = await refreshTokens();
+      if (!refreshed) {
+        await logout(clearSiteUrl: false);
+        return false;
+      }
+      await _saveCredentials();
+      return true;
+    } catch (e) {
+      // Network timeout, offline, or 500 server error occurred.
+      // The expired token will be checked anyway in further steps and validated again
+      return true;
     }
-    await _saveCredentials();
-    return true;
   }
 
   Future<void> logout({bool clearSiteUrl = false}) async {
@@ -216,7 +222,7 @@ class AuthService {
             body: jsonEncode({'username': username, 'password': password}),
           )
           .timeout(_timeout);
-      if (response.statusCode != 201) return false;
+      if (response.statusCode != 201 && response.statusCode != 200) return false;
       final body = json.decode(response.body);
       if (body is Map<String, dynamic> &&
           body['accessToken'] != null &&
@@ -244,7 +250,7 @@ class AuthService {
           )
           .timeout(_timeout);
 
-      if (response.statusCode == 201) {
+      if (response.statusCode == 201 || response.statusCode == 200) {
         final body = json.decode(response.body);
         if (body is Map<String, dynamic> &&
             body['accessToken'] != null &&
@@ -277,16 +283,17 @@ class AuthService {
 
   Future<bool> _remoteRefresh() async {
     if (siteUrl == null || refreshToken == null) return false;
-    try {
-      final uri = Uri.parse('$siteUrl/api/auth/refresh');
-      final response = await _client
-          .post(
-            uri,
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'refreshToken': refreshToken}),
-          )
-          .timeout(_timeout);
-      if (response.statusCode != 201) return false;
+    
+    final uri = Uri.parse('$siteUrl/api/auth/refresh');
+    final response = await _client
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'refreshToken': refreshToken}),
+        )
+        .timeout(_timeout);
+        
+    if (response.statusCode == 201 || response.statusCode == 200) {
       final body = json.decode(response.body);
       if (body is Map<String, dynamic> &&
           body['accessToken'] != null &&
@@ -296,8 +303,10 @@ class AuthService {
         return true;
       }
       return false;
-    } catch (_) {
+    }
+    if (response.statusCode >= 400 && response.statusCode < 500 && response.statusCode != 429) {
       return false;
     }
+    throw Exception('Server error during refresh');
   }
 }

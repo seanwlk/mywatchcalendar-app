@@ -91,6 +91,41 @@ class _FollowedSeriesScreenState extends State<FollowedSeriesScreen> {
     await _loadNextPage();
   }
 
+  Future<void> _onSeriesReturned(FollowedSeriesItem item, Series placeholder) async {
+    if (!placeholder.isFollowed) {
+      setState(() {
+        _items.removeWhere((i) => i.id == item.id);
+      });
+      return;
+    }
+
+    final updatedSeries = await ApiClient.instance.fetchSeriesbyId(item.id);
+    if (!mounted || updatedSeries == null) return;
+
+    int totalEp = 0;
+    int watchedEp = 0;
+    for (var season in updatedSeries.seasons) {
+      totalEp += season.episodes.length;
+      watchedEp += season.episodes.where((e) => e.watched).length;
+    }
+
+    final index = _items.indexWhere((i) => i.id == item.id);
+    if (index != -1) {
+      setState(() {
+        _items[index] = FollowedSeriesItem(
+          id: item.id,
+          title: item.title,
+          posterUrl: item.posterUrl,
+          isDropped: updatedSeries.isDropped,
+          progress: FollowedSeriesProgress(
+            total: totalEp > 0 ? totalEp : item.progress.total,
+            watched: totalEp > 0 ? watchedEp : item.progress.watched,
+          ),
+        );
+      });
+    }
+  }
+
   Widget _buildProgressBar(FollowedSeriesItem item) {
     final double progress = item.progress.total > 0
         ? (item.progress.watched / item.progress.total)
@@ -129,6 +164,17 @@ class _FollowedSeriesScreenState extends State<FollowedSeriesScreen> {
     );
   }
 
+  void _openSeriesInfo(FollowedSeriesItem item) async {
+    final placeholder = _createPlaceholderSeries(item);
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SeriesInfoScreen(series: placeholder),
+      ),
+    );
+    _onSeriesReturned(item, placeholder);
+  }
+
   Widget _buildListItem(FollowedSeriesItem item) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -136,15 +182,7 @@ class _FollowedSeriesScreenState extends State<FollowedSeriesScreen> {
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) =>
-                  SeriesInfoScreen(series: _createPlaceholderSeries(item)),
-            ),
-          ).then((_) => _refresh());
-        },
+        onTap: () => _openSeriesInfo(item),
         child: Column(
           children: [
             Row(
@@ -199,15 +237,7 @@ class _FollowedSeriesScreenState extends State<FollowedSeriesScreen> {
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) =>
-                  SeriesInfoScreen(series: _createPlaceholderSeries(item)),
-            ),
-          ).then((_) => _refresh());
-        },
+        onTap: () => _openSeriesInfo(item),
         child: Column(
           children: [
             Expanded(

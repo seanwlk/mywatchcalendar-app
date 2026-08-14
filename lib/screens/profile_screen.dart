@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import '../widgets/universal_image.dart';
 import 'settings_screen.dart';
 import 'series_info_screen.dart';
 import 'followed_series_screen.dart';
@@ -955,7 +955,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     },
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: CachedNetworkImage(
+                      child: UniversalImage(
                         imageUrl: item.posterUrl,
                         width: 120,
                         fit: BoxFit.cover,

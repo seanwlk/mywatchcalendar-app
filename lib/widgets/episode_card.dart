@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import '../widgets/universal_image.dart';
 import 'package:flutter/material.dart';
 import '../models.dart';
 
@@ -115,7 +115,7 @@ class EpisodeCard extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(6),
-                child: CachedNetworkImage(
+                child: UniversalImage(
                   imageUrl: series.posterUrl,
                   width: 64,
                   height: 96,

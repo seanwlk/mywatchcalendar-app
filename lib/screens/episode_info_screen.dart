@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import '../widgets/universal_image.dart';
 import 'package:flutter/material.dart';
 import '../models.dart';
 import '../services/api_client.dart';
@@ -103,7 +103,7 @@ class _EpisodeInfoScreenState extends State<EpisodeInfoScreen> {
             left: 0,
             right: 0,
             height: 300,
-            child: CachedNetworkImage(
+            child: UniversalImage(
               imageUrl: _episode!.imageUrl,
               fit: BoxFit.cover,
               memCacheWidth: 1080,

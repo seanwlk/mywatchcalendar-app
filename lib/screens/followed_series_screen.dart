@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import '../widgets/universal_image.dart';
 import 'package:flutter/material.dart';
 import 'series_info_screen.dart';
 import '../models.dart';
@@ -187,7 +187,7 @@ class _FollowedSeriesScreenState extends State<FollowedSeriesScreen> {
           children: [
             Row(
               children: [
-                CachedNetworkImage(
+                UniversalImage(
                   imageUrl: item.posterUrl,
                   width: 80,
                   height: 120,
@@ -241,7 +241,7 @@ class _FollowedSeriesScreenState extends State<FollowedSeriesScreen> {
         child: Column(
           children: [
             Expanded(
-              child: CachedNetworkImage(
+              child: UniversalImage(
                 imageUrl: item.posterUrl,
                 width: double.infinity,
                 fit: BoxFit.cover,

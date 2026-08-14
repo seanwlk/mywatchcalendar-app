@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import '../widgets/universal_image.dart';
 import 'package:flutter/material.dart';
 import '../models.dart';
 import '../services/api_client.dart';
@@ -191,7 +191,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       return ListTile(
                         leading: SizedBox(
                           width: 50,
-                          child: CachedNetworkImage(
+                          child: UniversalImage(
                             imageUrl: s.posterUrl,
                             fit: BoxFit.cover,
                             memCacheWidth: 150,

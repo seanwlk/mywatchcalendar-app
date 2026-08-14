@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../widgets/universal_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
@@ -68,7 +70,9 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
 
     try {
       await precacheImage(
-        CachedNetworkImageProvider(_currentSeries.posterUrl),
+        kIsWeb 
+            ? NetworkImage(_currentSeries.posterUrl) as ImageProvider
+            : CachedNetworkImageProvider(_currentSeries.posterUrl),
         context,
       );
 
@@ -114,8 +118,8 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: Image(
-              image: CachedNetworkImageProvider(_currentSeries.posterUrl),
+            child: UniversalImage(
+              imageUrl: _currentSeries.posterUrl,
               width: double.infinity,
               height: 250,
               fit: BoxFit.cover,
@@ -329,7 +333,7 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
             left: 0,
             right: 0,
             height: 300,
-            child: CachedNetworkImage(
+            child: UniversalImage(
               imageUrl: _currentSeries.posterUrl,
               fit: BoxFit.cover,
               memCacheWidth: 1080,
@@ -683,7 +687,7 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
     return ListTile(
       leading: ClipRRect(
         borderRadius: BorderRadius.circular(4),
-        child: CachedNetworkImage(
+        child: UniversalImage(
           imageUrl: e.imageUrl,
           width: 60,
           height: 40,

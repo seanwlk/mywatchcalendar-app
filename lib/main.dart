@@ -320,7 +320,7 @@ class _MyAppState extends State<MyApp> {
           builder: (context, child) {
             final screenWidth = MediaQuery.sizeOf(context).width;
             final responsiveMaxWidth = (screenWidth * 0.45).clamp(
-              600.0,
+              800.0,
               1200.0,
             );
             return Container(

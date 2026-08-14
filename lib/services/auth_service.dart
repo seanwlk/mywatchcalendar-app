@@ -146,11 +146,9 @@ class AuthService {
     if (normalized.isEmpty || normalized == this.siteUrl) {
       return false;
     }
+    
     this.siteUrl = normalized;
-    accessToken = null;
-    refreshToken = null;
     await _saveCredentials();
-    authStateNotifier.value = false;
     return true;
   }
 

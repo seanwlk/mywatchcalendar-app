@@ -180,6 +180,7 @@ class ApiClient {
         final data = json.decode(response.body);
         final epData = Map<String, dynamic>.from(data['latestEpisode'] ?? {});
         epData['watched'] = data['watched'];
+        epData['rewatchCount'] = data['rewatchCount'];
         if (epData['id'] == null) epData['id'] = data['id'];
         return Episode.fromJson(epData);
       }
@@ -200,6 +201,8 @@ class ApiClient {
         final data = json.decode(response.body);
         final epData = Map<String, dynamic>.from(data['episode'] ?? {});
         epData['watched'] = data['watched'];
+        epData['rewatchCount'] = data['rewatchCount'];
+        epData['history'] = data['history'];
         if (epData['id'] == null) epData['id'] = data['id'];
         return Episode.fromJson(epData);
       }
@@ -207,20 +210,26 @@ class ApiClient {
     return null;
   }
 
-  Future<bool> markEpisodeWatched(String episodeId, bool watched) async {
+  Future<bool> markEpisodeWatched(
+    String episodeId, 
+    bool watched, {
+    String? progressId,
+    DateTime? watchedAt,
+  }) async {
     try {
       await _ensureAuth();
-      final uri = Uri.parse(
-        '${AuthService.instance.apiBaseUrl}/episodes/$episodeId/mark-watched',
-      );
-      final response = watched
-          ? await _client.post(uri, headers: _authHeaders()).timeout(_timeout)
-          : await _client
-                .delete(uri, headers: _authHeaders())
-                .timeout(_timeout);
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        return true;
+      
+      if (watched) {
+        final uri = Uri.parse('${AuthService.instance.apiBaseUrl}/episodes/$episodeId/mark-watched');
+        final body = watchedAt != null ? jsonEncode({'watchedAt': watchedAt.toUtc().toIso8601String()}) : null;
+        final response = await _client.post(uri, headers: _authHeaders(), body: body).timeout(_timeout);
+        return response.statusCode >= 200 && response.statusCode < 300;
+      } else {
+        String url = '${AuthService.instance.apiBaseUrl}/episodes/$episodeId/mark-watched';
+        if (progressId != null) url += '?progressId=$progressId';
+        final uri = Uri.parse(url);
+        final response = await _client.delete(uri, headers: _authHeaders()).timeout(_timeout);
+        return response.statusCode >= 200 && response.statusCode < 300;
       }
     } catch (_) {}
     return false;
@@ -288,6 +297,7 @@ class ApiClient {
     
     final epData = Map<String, dynamic>.from(data['latestEpisode'] ?? {});
     epData['watched'] = data['watched'];
+    epData['rewatchCount'] = data['rewatchCount'];
     if (epData['id'] == null) epData['id'] = data['id'];
     final episode = Episode.fromJson(epData);
     return MapEntry(series, episode);

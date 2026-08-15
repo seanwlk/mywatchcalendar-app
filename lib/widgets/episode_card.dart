@@ -9,6 +9,7 @@ class EpisodeCard extends StatelessWidget {
   final VoidCallback onSeriesTap;
   final VoidCallback onEpisodeTap;
   final VoidCallback onMarkWatched;
+  final VoidCallback? onMarkWatchedLongPress;
   final bool showAirTime;
 
   const EpisodeCard({
@@ -19,6 +20,7 @@ class EpisodeCard extends StatelessWidget {
     required this.onSeriesTap,
     required this.onEpisodeTap,
     required this.onMarkWatched,
+    this.onMarkWatchedLongPress,
     this.showAirTime = false,
   });
 
@@ -92,13 +94,35 @@ class EpisodeCard extends StatelessWidget {
       }
     }
 
-    return IconButton(
-      visualDensity: VisualDensity.compact,
-      icon: Icon(
-        episode.watched ? Icons.check_circle : Icons.check_circle_outline,
-        color: episode.watched ? Colors.green : null,
+    return InkWell(
+      customBorder: const CircleBorder(),
+      onTap: onMarkWatched,
+      onLongPress: onMarkWatchedLongPress,
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Icon(
+              episode.watched ? Icons.check_circle : Icons.check_circle_outline,
+              color: episode.watched ? Colors.green : null,
+            ),
+            if (episode.rewatchCount > 1)
+              Positioned(
+                top: -6,
+                right: -6,
+                child: Text(
+                  'x${episode.rewatchCount}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
-      onPressed: onMarkWatched,
     );
   }
 

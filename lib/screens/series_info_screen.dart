@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models.dart';
 import '../services/api_client.dart';
+import '../widgets/watch_history_modal.dart';
 import 'episode_info_screen.dart';
 
 class SeriesInfoScreen extends StatefulWidget {
@@ -149,12 +150,27 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
     );
   }
 
+  void _handleMarkWatchedLongPress(Episode episode) {
+    WatchHistoryModal.show(
+      context, 
+      _currentSeries, 
+      episode,
+      onChanged: () => _fetchEnrichedData(),
+    );
+  }
+
   Future<void> _toggleEpisodeWatched(Episode episode) async {
+    if (episode.watched && episode.rewatchCount > 1) {
+      _handleMarkWatchedLongPress(episode);
+      return;
+    }
+
     final bool newStatus = !episode.watched;
     final String episodeId = episode.id;
 
     setState(() {
       episode.watched = newStatus;
+      episode.rewatchCount += newStatus ? 1 : -1;
     });
 
     final success = await ApiClient.instance.markEpisodeWatched(
@@ -167,6 +183,7 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
     if (!success) {
       setState(() {
         episode.watched = !newStatus;
+        episode.rewatchCount += !newStatus ? 1 : -1;
       });
 
       ScaffoldMessenger.of(
@@ -233,11 +250,99 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
     }
   }
 
+  Future<void> _bulkRewatchSeason(Season season) async {
+    if (season.episodes.isEmpty) return;
+
+    final String seasonText = season.number == 0 ? 'Specials' : 'Season ${season.number}';
+
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Bulk Rewatch Season'),
+          content: Text(
+            'Are you sure you want to add a new watch record for today for all episodes in $seasonText?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Confirm'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) return;
+
+    setState(() {
+      for (var e in season.episodes) {
+        e.watched = true;
+        e.rewatchCount += 1;
+      }
+    });
+
+    const int maxConcurrent = 4;
+    bool hasError = false;
+    for (var i = 0; i < season.episodes.length; i += maxConcurrent) {
+      final chunk = season.episodes.skip(i).take(maxConcurrent);
+      final results = await Future.wait(
+        chunk.map(
+          (e) => ApiClient.instance.markEpisodeWatched(e.id, true),
+        ),
+      );
+      if (results.any((ok) => !ok)) hasError = true;
+    }
+
+    if (!mounted) return;
+
+    if (hasError) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to update some episodes.')),
+      );
+    }
+    _fetchEnrichedData();
+  }
+
   Future<void> _toggleSeasonWatched(Season season) async {
     if (season.episodes.isEmpty) return;
 
     final bool allWatched = season.episodes.every((e) => e.watched);
     final bool newStatus = !allWatched;
+
+    final String statusText = !allWatched ? 'watched' : 'unwatched';
+    final String seasonText = season.number == 0 ? 'Specials' : 'Season ${season.number}';
+    final bool hasRewatches = allWatched && season.episodes.any((e) => e.rewatchCount > 1);
+
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm Bulk Update'),
+          content: Text(
+            hasRewatches
+                ? 'Are you sure you want to undo the most recent watch for all episodes in $seasonText?\n\nEpisodes watched multiple times will have their count reduced by 1.'
+                : 'Are you sure you want to mark all episodes in $seasonText as $statusText?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Confirm'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) return;
 
     final episodesToUpdate = season.episodes
         .where((e) => e.watched != newStatus)
@@ -247,7 +352,18 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
 
     setState(() {
       for (var e in episodesToUpdate) {
-        e.watched = newStatus;
+        if (newStatus) {
+          e.watched = true;
+          e.rewatchCount += 1;
+        } else {
+          if (e.rewatchCount > 1) {
+            e.rewatchCount -= 1;
+            // e.watched safely remains true
+          } else {
+            e.watched = false;
+            e.rewatchCount = 0;
+          }
+        }
       }
     });
 
@@ -269,8 +385,8 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to update some episodes.')),
       );
-      _fetchEnrichedData();
     }
+    _fetchEnrichedData();
   }
 
   Color _getStatusColor(String status, BuildContext context) {
@@ -588,6 +704,13 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
                     final bool allWatched =
                         totalEpisodes > 0 && watchedEpisodes == totalEpisodes;
 
+                    int minSeasonRewatch = 0;
+                    if (allWatched && season.episodes.isNotEmpty) {
+                      minSeasonRewatch = season.episodes
+                          .map((e) => e.rewatchCount)
+                          .reduce((a, b) => a < b ? a : b);
+                    }
+
                     return Material(
                       color: Theme.of(context).scaffoldBackgroundColor,
                       child: ExpansionTile(
@@ -606,48 +729,36 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
                                 color: Colors.grey,
                               ),
                             ),
-                            IconButton(
-                              onPressed: () async {
-                                final String statusText = !allWatched
-                                    ? 'watched'
-                                    : 'unwatched';
-                                final String seasonText = season.number == 0
-                                    ? 'Specials'
-                                    : 'Season ${season.number}';
-
-                                final bool? confirm = await showDialog<bool>(
-                                  context: context,
-                                  builder: (BuildContext context) {
-                                    return AlertDialog(
-                                      title: const Text('Confirm Bulk Update'),
-                                      content: Text(
-                                        'Are you sure you want to mark all episodes in $seasonText as $statusText?',
+                            InkWell(
+                              customBorder: const CircleBorder(),
+                              onTap: () => _toggleSeasonWatched(season),
+                              onLongPress: () => _bulkRewatchSeason(season),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    Icon(
+                                      allWatched
+                                          ? Icons.check_circle
+                                          : Icons.check_circle_outline,
+                                      color: allWatched ? Colors.green : null,
+                                    ),
+                                    if (allWatched && minSeasonRewatch > 1)
+                                      Positioned(
+                                        top: -6,
+                                        right: -6,
+                                        child: Text(
+                                          'x$minSeasonRewatch',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w900,
+                                            color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                          ),
+                                        ),
                                       ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.of(context).pop(false),
-                                          child: const Text('Cancel'),
-                                        ),
-                                        FilledButton(
-                                          onPressed: () =>
-                                              Navigator.of(context).pop(true),
-                                          child: const Text('Confirm'),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                );
-
-                                if (confirm == true) {
-                                  _toggleSeasonWatched(season);
-                                }
-                              },
-                              icon: Icon(
-                                allWatched
-                                    ? Icons.check_circle
-                                    : Icons.check_circle_outline,
-                                color: allWatched ? Colors.green : null,
+                                  ],
+                                ),
                               ),
                             ),
                           ],
@@ -700,11 +811,34 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
         'S${e.season.toString().padLeft(2, '0')}E${e.number.toString().padLeft(2, '0')}',
       ),
       subtitle: Text(e.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      trailing: IconButton(
-        onPressed: () => _toggleEpisodeWatched(e),
-        icon: Icon(
-          e.watched ? Icons.check_circle : Icons.check_circle_outline,
-          color: e.watched ? Colors.green : null,
+      trailing: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: () => _toggleEpisodeWatched(e),
+        onLongPress: () => _handleMarkWatchedLongPress(e),
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Icon(
+                e.watched ? Icons.check_circle : Icons.check_circle_outline,
+                color: e.watched ? Colors.green : null,
+              ),
+              if (e.rewatchCount > 1)
+                Positioned(
+                  top: -6,
+                  right: -6,
+                  child: Text(
+                    'x${e.rewatchCount}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
       onTap: () => Navigator.push(
@@ -712,7 +846,7 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
         MaterialPageRoute(
           builder: (_) => EpisodeInfoScreen(series: _currentSeries, episode: e),
         ),
-      ),
+      ).then((_) => _fetchEnrichedData()),
     );
   }
 }

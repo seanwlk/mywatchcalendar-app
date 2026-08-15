@@ -3,6 +3,7 @@ import '../models.dart';
 import '../services/api_client.dart';
 import '../services/widget_updater.dart';
 import '../widgets/episode_card.dart';
+import '../widgets/watch_history_modal.dart';
 import 'episode_info_screen.dart';
 import 'series_info_screen.dart';
 
@@ -108,7 +109,21 @@ class _ToWatchScreenState extends State<ToWatchScreen> {
     });
   }
 
+  void _handleMarkWatchedLongPress(Episode episode, Series series) {
+    WatchHistoryModal.show(
+      context,
+      series,
+      episode,
+      onChanged: () => _refreshLastEpisode(series, episode),
+    );
+  }
+
   Future<void> _markWatched(Episode episode, Series series) async {
+    if (episode.watched && episode.rewatchCount > 1) {
+      _handleMarkWatchedLongPress(episode, series);
+      return;
+    }
+
     final index = _items.indexWhere((entry) => entry.value.id == episode.id);
     if (index == -1) return;
 
@@ -233,6 +248,7 @@ class _ToWatchScreenState extends State<ToWatchScreen> {
             _refreshLastEpisode(entry.key, entry.value);
           },
           onMarkWatched: () => _markWatched(entry.value, entry.key),
+          onMarkWatchedLongPress: () => _handleMarkWatchedLongPress(entry.value, entry.key),
         );
       },
     );

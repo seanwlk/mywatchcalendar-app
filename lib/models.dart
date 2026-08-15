@@ -81,6 +81,20 @@ class ExternalIds {
   }
 }
 
+class EpisodeHistoryRecord {
+  final String id;
+  final DateTime watchedAt;
+
+  EpisodeHistoryRecord({required this.id, required this.watchedAt});
+
+  factory EpisodeHistoryRecord.fromJson(Map<String, dynamic> json) {
+    return EpisodeHistoryRecord(
+      id: json['id']?.toString() ?? '',
+      watchedAt: DateTime.parse(json['watchedAt']).toLocal(),
+    );
+  }
+}
+
 class Episode {
   final String id;
   final int season;
@@ -91,6 +105,8 @@ class Episode {
   bool watched;
   final int episodesLeft;
   final String description;
+  int rewatchCount;
+  final List<EpisodeHistoryRecord> history;
 
   Episode({
     required this.id,
@@ -102,6 +118,8 @@ class Episode {
     this.watched = false,
     this.episodesLeft = 0,
     this.description = '',
+    this.rewatchCount = 0,
+    this.history = const [],
   });
 
   factory Episode.fromJson(Map<String, dynamic> json) {
@@ -121,6 +139,11 @@ class Episode {
           ? json['episodesLeft']
           : int.tryParse(json['episodesLeft']?.toString() ?? '0') ?? 0,
       description: json['overview']?.toString() ?? 'No data',
+      rewatchCount: json['rewatchCount'] ?? 0,
+      history: (json['history'] as List?)
+              ?.map((e) => EpisodeHistoryRecord.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
   }
 }

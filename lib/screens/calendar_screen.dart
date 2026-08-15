@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models.dart';
 import '../services/api_client.dart';
 import '../widgets/episode_card.dart';
+import '../widgets/watch_history_modal.dart';
 import 'episode_info_screen.dart';
 import 'series_info_screen.dart';
 
@@ -133,12 +134,27 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
   }
 
-  Future<void> _toggleWatched(Episode episode) async {
+  void _handleMarkWatchedLongPress(Series series, Episode episode, List<MapEntry<Series, Episode>> items) {
+    WatchHistoryModal.show(
+      context, 
+      series, 
+      episode,
+      onChanged: () => _refreshEpisode(series, episode, items),
+    );
+  }
+
+  Future<void> _toggleWatched(Series series, Episode episode, List<MapEntry<Series, Episode>> items) async {
+    if (episode.watched && episode.rewatchCount > 1) {
+      _handleMarkWatchedLongPress(series, episode, items);
+      return;
+    }
+
     final bool newStatus = !episode.watched;
     final String episodeId = episode.id;
 
     setState(() {
       episode.watched = newStatus;
+      episode.rewatchCount += newStatus ? 1 : -1;
     });
 
     final success = await ApiClient.instance.markEpisodeWatched(
@@ -151,6 +167,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (!success) {
       setState(() {
         episode.watched = !newStatus;
+        episode.rewatchCount += !newStatus ? 1 : -1;
       });
 
       ScaffoldMessenger.of(
@@ -246,7 +263,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
             _refreshEpisode(entry.key, entry.value, items);
           },
-          onMarkWatched: () => _toggleWatched(episode),
+          onMarkWatched: () => _toggleWatched(entry.key, episode, items),
+          onMarkWatchedLongPress: () => _handleMarkWatchedLongPress(entry.key, episode, items),
         ),
       ],
     );

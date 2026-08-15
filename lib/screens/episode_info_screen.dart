@@ -2,6 +2,7 @@ import '../widgets/universal_image.dart';
 import 'package:flutter/material.dart';
 import '../models.dart';
 import '../services/api_client.dart';
+import '../widgets/watch_history_modal.dart';
 
 class EpisodeInfoScreen extends StatefulWidget {
   final Series? series;
@@ -25,6 +26,7 @@ class _EpisodeInfoScreenState extends State<EpisodeInfoScreen> {
   Series? _series;
   Episode? _episode;
   bool _isWatched = false;
+  int _rewatchCount = 0;
   bool _isLoading = false;
   bool _isFetchingData = false;
 
@@ -36,6 +38,7 @@ class _EpisodeInfoScreenState extends State<EpisodeInfoScreen> {
 
     if (_episode != null && _series != null) {
       _isWatched = _episode!.watched;
+      _rewatchCount = _episode!.rewatchCount;
     } else {
       _fetchEnrichedData();
     }
@@ -45,15 +48,16 @@ class _EpisodeInfoScreenState extends State<EpisodeInfoScreen> {
     setState(() => _isFetchingData = true);
     try {
       final fetchedSeries =
-          await ApiClient.instance.fetchSeriesbyId(widget.seriesId!);
+          await ApiClient.instance.fetchSeriesbyId(widget.seriesId ?? _series!.id);
       final fetchedEpisode =
-          await ApiClient.instance.getEpisode(widget.episodeId!);
+          await ApiClient.instance.getEpisode(widget.episodeId ?? _episode!.id);
 
       if (mounted) {
         setState(() {
           _series = fetchedSeries;
           _episode = fetchedEpisode;
           _isWatched = _episode?.watched ?? false;
+          _rewatchCount = _episode?.rewatchCount ?? 0;
           _isFetchingData = false;
         });
       }
@@ -67,8 +71,24 @@ class _EpisodeInfoScreenState extends State<EpisodeInfoScreen> {
     }
   }
 
+  void _handleLongPress() {
+    if (_episode == null || _series == null) return;
+    WatchHistoryModal.show(
+      context, 
+      _series!, 
+      _episode!,
+      onChanged: () => _fetchEnrichedData(),
+    );
+  }
+
   Future<void> _toggleWatched() async {
     if (_episode == null) return;
+    
+    if (_isWatched && _rewatchCount > 1) {
+      _handleLongPress();
+      return;
+    }
+    
     setState(() => _isLoading = true);
 
     final success = await ApiClient.instance.markEpisodeWatched(
@@ -77,7 +97,10 @@ class _EpisodeInfoScreenState extends State<EpisodeInfoScreen> {
     );
 
     if (success) {
-      setState(() => _isWatched = !_isWatched);
+      setState(() {
+        _isWatched = !_isWatched;
+        _rewatchCount += _isWatched ? 1 : -1;
+      });
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -141,6 +164,7 @@ class _EpisodeInfoScreenState extends State<EpisodeInfoScreen> {
                             width: double.infinity,
                             child: FilledButton.icon(
                               onPressed: _isLoading ? null : _toggleWatched,
+                              onLongPress: _isLoading ? null : _handleLongPress,
                               icon: _isLoading
                                   ? const SizedBox(
                                       width: 18,
@@ -155,7 +179,9 @@ class _EpisodeInfoScreenState extends State<EpisodeInfoScreen> {
                                           : Icons.visibility_off,
                                     ),
                               label: Text(
-                                _isWatched ? 'Watched' : 'Mark Watched',
+                                _isWatched 
+                                    ? (_rewatchCount > 1 ? 'Watched (x$_rewatchCount)' : 'Watched')
+                                    : 'Mark Watched',
                               ),
                             ),
                           ),

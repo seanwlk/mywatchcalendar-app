@@ -873,10 +873,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const FollowedSeriesScreen()),
-              ).then((_) {
-                _loadProfileData();
-                _loadGraphData(reset: true);
-              });
+              );
             },
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -948,10 +945,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           builder: (_) =>
                               SeriesInfoScreen(series: placeholderSeries),
                         ),
-                      ).then((_) {
-                        _loadProfileData();
-                        _loadGraphData(reset: true);
-                      });
+                      );
                     },
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),

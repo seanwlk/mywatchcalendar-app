@@ -64,6 +64,15 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
     }
   }
 
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'TBD';
+    final localDate = date.toLocal();
+    final day = localDate.day.toString().padLeft(2, '0');
+    final month = DateConstants.monthsShort[localDate.month];
+    final year = localDate.year;
+    return '$day $month $year';
+  }
+
   Future<void> _generateAndShareCard() async {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Sharing...')),
@@ -137,7 +146,7 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Released: ${_currentSeries.releaseDate?.toLocal().toString().split(' ')[0] ?? 'TBD'}',
+            'Released: ${_formatDate(_currentSeries.releaseDate)}',
             style: const TextStyle(color: Colors.grey, fontSize: 16),
           ),
           const SizedBox(height: 4),
@@ -358,7 +367,6 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
         } else {
           if (e.rewatchCount > 1) {
             e.rewatchCount -= 1;
-            // e.watched safely remains true
           } else {
             e.watched = false;
             e.rewatchCount = 0;
@@ -626,7 +634,7 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
                     children: [
                       Row(
                         children: [
-                          Text('Started airing ${_currentSeries.releaseDate?.toLocal().toString().split(' ')[0] ?? 'TBD'}'),
+                          Text('Started airing ${_formatDate(_currentSeries.releaseDate)}'),
                           const SizedBox(width: 12),
                           if (_currentSeries.status != null &&
                               _currentSeries.status!.isNotEmpty)

@@ -71,6 +71,15 @@ class _EpisodeInfoScreenState extends State<EpisodeInfoScreen> {
     }
   }
 
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'TBD';
+    final localDate = date.toLocal();
+    final day = localDate.day.toString().padLeft(2, '0');
+    final month = DateConstants.monthsShort[localDate.month];
+    final year = localDate.year;
+    return '$day $month $year';
+  }
+
   void _handleLongPress() {
     if (_episode == null || _series == null) return;
     WatchHistoryModal.show(
@@ -199,7 +208,7 @@ class _EpisodeInfoScreenState extends State<EpisodeInfoScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Air date ${_episode!.airDate?.toLocal().toString().split(' ')[0] ?? 'TBD'}',
+                        'Air date ${_formatDate(_episode!.airDate)}',
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),

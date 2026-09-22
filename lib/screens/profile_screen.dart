@@ -102,13 +102,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       int numBins = 0;
       if (_graphPeriod == 'day') {
-        numBins = 60;
+        numBins = 60; // 60 days
       } else if (_graphPeriod == 'week') {
-        numBins = 24;
+        numBins = 52; // 1 year (was 24)
       } else if (_graphPeriod == 'month') {
-        numBins = 12;
+        numBins = 36; // 3 years (was 12)
       } else if (_graphPeriod == 'year') {
-        numBins = 5;
+        numBins = 10; // 10 years (was 5)
       }
 
       DateTime chunkStart = end;

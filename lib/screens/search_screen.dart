@@ -22,7 +22,7 @@ class _SearchScreenState extends State<SearchScreen> {
   bool _hasMore = false;
   int _page = 1;
   int _searchSeq = 0;
-  static const int _pageSize = 30;
+  static const int _pageSize = 20;
   String _currentQuery = '';
 
   @override

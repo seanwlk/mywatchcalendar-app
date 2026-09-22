@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models.dart';
 import '../services/api_client.dart';
+import '../services/auth_service.dart';
 import '../widgets/watch_history_modal.dart';
 import 'episode_info_screen.dart';
 
@@ -74,6 +75,8 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
   }
 
   Future<void> _generateAndShareCard() async {
+    if (!mounted) return;
+    
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Sharing...')),
     );
@@ -407,10 +410,10 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
     return Theme.of(context).colorScheme.surfaceContainerHighest;
   }
 
-  Future<void> _sendToClipBoard(String? clipText, BuildContext context) async {
+  Future<void> _sendToClipBoard(String? clipText, BuildContext providedContext) async {
     if (clipText == null || clipText.isEmpty) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (!providedContext.mounted) return;
+      ScaffoldMessenger.of(providedContext).showSnackBar(
         const SnackBar(
           content: Text('No data available to copy'),
         ),
@@ -420,8 +423,8 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
     await Clipboard.setData(
       ClipboardData(text: clipText),
     );
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    if (!providedContext.mounted) return;
+    ScaffoldMessenger.of(providedContext).showSnackBar(
       const SnackBar(
         content: Text('Copied to clipboard'),
       ),
@@ -432,18 +435,16 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
     final uri = Uri.parse(url);
     try {
       if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not open link')),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Could not open link')),
         );
       }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open link')),
+      );
     }
   }
 
@@ -486,19 +487,37 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
                         if (tmdbId != null && tmdbId.toString().isNotEmpty) {
                           await _openUrl('https://www.themoviedb.org/tv/$tmdbId');
                         } else {
-                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('TMDB ID not available')));
+                          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('TMDB ID not available')));
                         }
                       } else if (value == 'open_imdb') {
                         final imdbId = _currentSeries.externalIds?.imdb;
                         if (imdbId != null && imdbId.toString().isNotEmpty) {
                           await _openUrl('https://www.imdb.com/title/$imdbId/');
                         } else {
-                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('IMDb ID not available')));
+                          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('IMDb ID not available')));
                         }
                       } else if (value == 'copy_tmdb') {
                         await _sendToClipBoard(_currentSeries.externalIds?.tmdb?.toString(), context);
                       } else if (value == 'copy_imdb') {
                         await _sendToClipBoard(_currentSeries.externalIds?.imdb?.toString(), context);
+                      } else if (value == 'sync_series') {
+                        final tmdbIdStr = _currentSeries.externalIds?.tmdb?.toString();
+                        if (tmdbIdStr != null && tmdbIdStr.isNotEmpty) {
+                          final tmdbId = int.tryParse(tmdbIdStr);
+                          if (tmdbId != null) {
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Starting sync...')));
+                            final success = await ApiClient.instance.syncSingleSeries(tmdbId);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(success ? 'Sync job for $tmdbId added to queue' : 'Failed to trigger sync')),
+                              );
+                            }
+                          } else {
+                            if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid TMDB ID')));
+                          }
+                        } else {
+                          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('TMDB ID not available')));
+                        }
                       }
                     },
                     itemBuilder: (context) => [
@@ -564,6 +583,19 @@ class _SeriesInfoScreenState extends State<SeriesInfoScreen> {
                           ],
                         ),
                       ),
+                      if (AuthService.instance.isAdmin) ...[
+                        const PopupMenuDivider(),
+                        const PopupMenuItem(
+                          value: 'sync_series',
+                          child: Row(
+                            children: [
+                              Icon(Icons.sync, size: 20),
+                              SizedBox(width: 12),
+                              Text('Sync Series Data'),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ],

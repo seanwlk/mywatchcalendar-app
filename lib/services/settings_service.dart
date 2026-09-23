@@ -12,6 +12,7 @@ class SettingsService {
   static const _keyGraphPeriod = 'graph_period';
   static const _keyGraphMetric = 'graph_metric';
   static const _keyGraphReverse = 'graph_reverse';
+  static const _keyCalendarViewType = 'calendar_view_type'; // New key
 
   static final SettingsService instance = SettingsService._internal();
 
@@ -25,6 +26,7 @@ class SettingsService {
   String graphPeriod = 'day';
   String graphMetric = 'episodes';
   bool graphReverse = true;
+  String calendarViewType = 'timeline';
 
   SettingsService._internal();
 
@@ -42,6 +44,7 @@ class SettingsService {
     graphPeriod = _prefs?.getString(_keyGraphPeriod) ?? 'day';
     graphMetric = _prefs?.getString(_keyGraphMetric) ?? 'episodes';
     graphReverse = _prefs?.getBool(_keyGraphReverse) ?? true;
+    calendarViewType = _prefs?.getString(_keyCalendarViewType) ?? 'timeline';
   }
 
   Future<bool> updateTheme(AppThemeChoice choice) async {
@@ -87,5 +90,10 @@ class SettingsService {
   Future<bool> updateGraphReverse(bool reverse) async {
     graphReverse = reverse;
     return _prefs?.setBool(_keyGraphReverse, reverse) ?? Future.value(false);
+  }
+
+  Future<bool> updateCalendarViewType(String viewType) async {
+    calendarViewType = viewType;
+    return _prefs?.setString(_keyCalendarViewType, viewType) ?? Future.value(false);
   }
 }

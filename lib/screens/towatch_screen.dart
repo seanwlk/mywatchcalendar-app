@@ -6,9 +6,12 @@ import '../widgets/episode_card.dart';
 import '../widgets/watch_history_modal.dart';
 import 'episode_info_screen.dart';
 import 'series_info_screen.dart';
+import 'home_screen.dart';
 
 class ToWatchScreen extends StatefulWidget {
-  const ToWatchScreen({super.key});
+  final bool isActive;
+  
+  const ToWatchScreen({super.key, required this.isActive});
 
   @override
   State<ToWatchScreen> createState() => _ToWatchScreenState();
@@ -24,17 +27,36 @@ class _ToWatchScreenState extends State<ToWatchScreen> {
   int _loadSeq = 0;
   static const int _pageSize = 30;
 
+  bool _isDataStale = false;
+
   @override
   void initState() {
     super.initState();
+    GlobalSync.trigger.addListener(_onGlobalSync);
     _scrollController.addListener(_onScroll);
     _loadNextPage();
   }
 
   @override
   void dispose() {
+    GlobalSync.trigger.removeListener(_onGlobalSync);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onGlobalSync() {
+    if (!widget.isActive) {
+      _isDataStale = true;
+    }
+  }
+
+  @override
+  void didUpdateWidget(ToWatchScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !oldWidget.isActive && _isDataStale) {
+      _isDataStale = false;
+      _refresh();
+    }
   }
 
   void _onScroll() {
@@ -114,7 +136,10 @@ class _ToWatchScreenState extends State<ToWatchScreen> {
       context,
       series,
       episode,
-      onChanged: () => _refreshLastEpisode(series, episode),
+      onChanged: () {
+        _refreshLastEpisode(series, episode);
+        GlobalSync.notify();
+      },
     );
   }
 
@@ -147,6 +172,8 @@ class _ToWatchScreenState extends State<ToWatchScreen> {
       ).showSnackBar(const SnackBar(content: Text('Failed to update status')));
       return;
     }
+    
+    GlobalSync.notify();
 
     final next = await ApiClient.instance.getNextUnwatchedEpisode(series.id);
     if (!mounted || next == null) return;

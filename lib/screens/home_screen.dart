@@ -4,6 +4,11 @@ import 'calendar_screen.dart';
 import 'search_screen.dart';
 import 'profile_screen.dart';
 
+class GlobalSync {
+  static final ValueNotifier<int> trigger = ValueNotifier(0);
+  static void notify() => trigger.value++;
+}
+
 class HomeScreen extends StatefulWidget {
   final String username;
   final VoidCallback onLogout;
@@ -26,9 +31,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!_visited.contains(i)) return const SizedBox.shrink();
     switch (i) {
       case 0:
-        return const ToWatchScreen();
+        return ToWatchScreen(isActive: _index == 0);
       case 1:
-        return const CalendarScreen();
+        return CalendarScreen(isActive: _index == 1);
       case 2:
         return const SearchScreen();
       default:

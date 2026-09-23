@@ -6,9 +6,12 @@ import '../widgets/episode_card.dart';
 import '../widgets/watch_history_modal.dart';
 import 'episode_info_screen.dart';
 import 'series_info_screen.dart';
+import 'home_screen.dart';
 
 class CalendarScreen extends StatefulWidget {
-  const CalendarScreen({super.key});
+  final bool isActive;
+  
+  const CalendarScreen({super.key, required this.isActive});
 
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
@@ -33,9 +36,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
   late String _viewType; 
   DateTime _currentDate = DateTime.now();
 
+  bool _isDataStale = false;
+
   @override
   void initState() {
     super.initState();
+    GlobalSync.trigger.addListener(_onGlobalSync);
     
     _viewType = SettingsService.instance.calendarViewType;
     
@@ -53,8 +59,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   void dispose() {
+    GlobalSync.trigger.removeListener(_onGlobalSync);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onGlobalSync() {
+    if (!widget.isActive) {
+      _isDataStale = true;
+    }
+  }
+
+  @override
+  void didUpdateWidget(CalendarScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !oldWidget.isActive && _isDataStale) {
+      _isDataStale = false;
+      _refresh();
+    }
   }
 
   void _onScroll() {
@@ -196,7 +218,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
       context, 
       series, 
       episode,
-      onChanged: () => _refreshEpisode(series, episode, onUpdate: onUpdate),
+      onChanged: () {
+        _refreshEpisode(series, episode, onUpdate: onUpdate);
+        GlobalSync.notify();
+      },
     );
   }
 
@@ -233,6 +258,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Failed to update status')));
+    } else {
+      GlobalSync.notify();
     }
   }
 
